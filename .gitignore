@@ -1,0 +1,6 @@
+/.DS_Store
+/.solhint.json
+/artifacts
+/cache
+/node_modules
+/package-lock.json
