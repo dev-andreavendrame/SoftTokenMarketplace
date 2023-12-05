@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: MIT
-// Created by 3Tech Studio (mail dev.andreavendrame@gmail.com)
+/* Created by 3Tech Studio
+ * @author dev.andreavendrame@gmail.com
+ *
+ *  _____ _____         _       _____ _             _ _
+ * |____ |_   _|       | |     /  ___| |           | (_)
+ *     / / | | ___  ___| |__   \ `--.| |_ _   _  __| |_  ___
+ *     \ \ | |/ _ \/ __| '_ \   `--. \ __| | | |/ _` | |/ _ \
+ * .___/ / | |  __/ (__| | | | /\__/ / |_| |_| | (_| | | (_) |
+ * \____/  \_/\___|\___|_| |_| \____/ \__|\__,_|\__,_|_|\___/
+ *
+ */
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
@@ -39,13 +48,10 @@ import "./SnowTracker.sol";
  * 9. Trading active (marketplace paused/unpaused)
  *
  */
-contract SnowMarketplace is Pausable, AccessControl {
-    /**
-     * -----------------------------------------------------
-     * -------------------- CONSTANTS ----------------------
-     * -----------------------------------------------------
-     */
-
+contract SnowMarketplace is AccessControl {
+    //------------------------------------------------------------------//
+    //---------------------- Contract constants ------------------------//
+    //------------------------------------------------------------------//
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
@@ -53,11 +59,9 @@ contract SnowMarketplace is Pausable, AccessControl {
         keccak256("ORDERS_MANAGER_ROLE");
     uint256 public constant INVALID_BLOCK = 0;
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- MARKETPLACE EVENTS -------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Marketplace events ------------------------//
+    //------------------------------------------------------------------//
 
     event OrderCreated(
         uint256 indexed _orderId,
@@ -77,11 +81,9 @@ contract SnowMarketplace is Pausable, AccessControl {
         uint256 _atBlock
     );
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- ENUMERATORS & STRUCTS ----------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Enumerators and structs -------------------//
+    //------------------------------------------------------------------//
 
     enum NftType {
         ERC1155,
@@ -106,11 +108,9 @@ contract SnowMarketplace is Pausable, AccessControl {
         address taker;
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- CONTRACT STATE -----------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Contract storage --------------------------//
+    //------------------------------------------------------------------//
 
     uint256[] public activeOrders; // current marketplace active orders
     mapping(uint256 => MarketOrder) public orderDetails; // Details of all created orders
@@ -126,14 +126,12 @@ contract SnowMarketplace is Pausable, AccessControl {
 
     bool public isMarketplaceActive; // true if is possible to create a fulfill orders, false otherwise
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- IMPLEMENTATION -----------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //-------------------- Constructor ---------------------------------//
+    //------------------------------------------------------------------//
 
     /**
-     * @dev contract constructor
+     * @dev Contract constructor
      *
      * @param snowTokenContract address of the smart contract that
      * keeps track of the soft-token balances
@@ -154,25 +152,9 @@ contract SnowMarketplace is Pausable, AccessControl {
         isMarketplaceActive = true; // enable marketplace usage
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- MANAGEMENT FUNCTIONS -----------
-     * -----------------------------------------------------
-     */
-
-    /**
-     * @dev default OpenZeppelin implementation
-     */
-    function pause() public onlyRole(PAUSER_ROLE) {
-        _pause();
-    }
-
-    /**
-     * @dev default OpenZeppelin implementation
-     */
-    function unpause() public onlyRole(PAUSER_ROLE) {
-        _unpause();
-    }
+    //------------------------------------------------------------------//
+    //-------------------- Marketplace state management ----------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev enable the marketplace by letting available the functions
@@ -190,22 +172,18 @@ contract SnowMarketplace is Pausable, AccessControl {
         isMarketplaceActive = true;
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- CONTRACT MODIFIERS -------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //-------------------- Modifiers -----------------------------------//
+    //------------------------------------------------------------------//
 
     modifier marketplaceEnabled() {
         require(isMarketplaceActive, "Marketplace not active");
         _;
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- ORDERS MANAGEMENT --------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //-------------------- Orders management ---------------------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev Create a new MarketOrder that will be placed in the
@@ -490,11 +468,9 @@ contract SnowMarketplace is Pausable, AccessControl {
         }
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- SNOW TOKEN MANAGEMENT ----------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //-------------------- Soft token management -----------------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev update the contract address reference of the SNOW soft-token
@@ -513,11 +489,9 @@ contract SnowMarketplace is Pausable, AccessControl {
         snowSoftTokenAddress = newContract;
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- UTILITIES ----------------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //-------------------- Utilities -----------------------------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev get the list of the active orders IDs
@@ -528,11 +502,9 @@ contract SnowMarketplace is Pausable, AccessControl {
         return activeOrders;
     }
 
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- ERC1155 RECEVIER IMPLEMENTATION ---------------
-     * --------------------------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //-------------------- Erc1155 Receiver implementation -------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev default implementation plus a check

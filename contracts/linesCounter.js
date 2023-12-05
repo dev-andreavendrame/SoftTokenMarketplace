@@ -27,7 +27,14 @@ function countLinesWithAsteriskOrNotEmpty(filename) {
 	}
 }
 
-const fileNames = ["SnowMarketplace.sol", "SnowTracker.sol", "Erc1155Claimer.sol"];
+const fileNames = [
+	"SnowMarketplace.sol",
+	"SnowTracker.sol",
+	"Erc1155Claimer.sol",
+	"CollectionMinter.sol",
+	//"TitanRevealer.sol",
+	"Erc721Collection.sol",
+];
 var totalSolcLines = 0;
 for (let i = 0; i < fileNames.length; i++) {
 	const lineCount = countLinesWithAsteriskOrNotEmpty(fileNames[i]);

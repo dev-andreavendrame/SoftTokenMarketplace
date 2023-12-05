@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: MIT
-// Created by 3Tech Studio (mail dev.andreavendrame@gmail.com)
+/* Created by 3Tech Studio
+ * @author dev.andreavendrame@gmail.com
+ *
+ *  _____ _____         _       _____ _             _ _
+ * |____ |_   _|       | |     /  ___| |           | (_)
+ *     / / | | ___  ___| |__   \ `--.| |_ _   _  __| |_  ___
+ *     \ \ | |/ _ \/ __| '_ \   `--. \ __| | | |/ _` | |/ _ \
+ * .___/ / | |  __/ (__| | | | /\__/ / |_| |_| | (_| | | (_) |
+ * \____/  \_/\___|\___|_| |_| \____/ \__|\__,_|\__,_|_|\___/
+ *
+ */
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Pausable.sol";
@@ -490,6 +500,7 @@ contract Erc1155Claimer is
      */
     function claim(ClaimType claimType, uint256 claimId)
         public
+        whenNotPaused
         nonReentrant
         returns (uint256)
     {
@@ -659,7 +670,7 @@ contract Erc1155Claimer is
     function _getDistributionValues(
         uint256[] memory availableAmounts,
         uint256 amountToClaim
-    ) public view returns (uint256[] memory) {
+    ) private view returns (uint256[] memory) {
         uint256[] memory nftsToClaim;
         uint256[] memory currentAvailableAmounts = availableAmounts;
         uint256 nftsLeft = amountToClaim; // Nfts left to distribute
@@ -824,7 +835,7 @@ contract Erc1155Claimer is
         uint256[] memory availableAmounts
     )
         private
-        view
+        pure
         returns (
             uint256[] memory,
             uint256,
@@ -931,7 +942,7 @@ contract Erc1155Claimer is
         uint256[] memory currentAvailableAmounts
     )
         private
-        view
+        pure
         returns (
             uint256[] memory,
             uint256,
@@ -1076,7 +1087,7 @@ contract Erc1155Claimer is
         uint256 id,
         uint256 value,
         bytes calldata data
-    ) public returns (bytes4) {
+    ) public view returns (bytes4) {
         require(
             whitelistedWallets[operator] == true,
             "The contract can't receive NFTs from this operator"
@@ -1101,7 +1112,7 @@ contract Erc1155Claimer is
         uint256[] calldata ids,
         uint256[] calldata values,
         bytes calldata data
-    ) public returns (bytes4) {
+    ) public view returns (bytes4) {
         require(
             whitelistedWallets[operator] == true,
             "The contract can't receive NFTs from this operator"

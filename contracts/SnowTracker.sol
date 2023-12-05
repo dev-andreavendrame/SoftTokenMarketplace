@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: MIT
-// Created by 3Tech Studio (mail dev.andreavendrame@gmail.com)
+/* Created by 3Tech Studio
+ * @author dev.andreavendrame@gmail.com
+ *
+ *  _____ _____         _       _____ _             _ _
+ * |____ |_   _|       | |     /  ___| |           | (_)
+ *     / / | | ___  ___| |__   \ `--.| |_ _   _  __| |_  ___
+ *     \ \ | |/ _ \/ __| '_ \   `--. \ __| | | |/ _` | |/ _ \
+ * .___/ / | |  __/ (__| | | | /\__/ / |_| |_| | (_| | | (_) |
+ * \____/  \_/\___|\___|_| |_| \____/ \__|\__,_|\__,_|_|\___/
+ *
+ */
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/utils/Pausable.sol";
