@@ -15,6 +15,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./SnowTracker.sol";
 
 /**
@@ -24,18 +25,18 @@ import "./SnowTracker.sol";
  * ----- Contract actors -----
  *
  * - Buyer: wallet that owns SNOW tokens and that is able to buy an NFT
- *      by fulfilling an active MarketOrder.
+ * by fulfilling an active MarketOrder.
  * - Orders manager: wallet that is allowed to create and cancel
- *      MarketOrder(s) in order to sell both ERC1155 and ERC721 NFTs.
+ * MarketOrder(s) in order to sell both ERC1155 and ERC721 NFTs.
  * - Manager: wallet that is able to change the reference to the
- *      SNOW soft-token cotract (to update it in case of problems) and
- *      that is also able to pause and resume the marketplace interactions.
+ * SNOW soft-token cotract (to update it in case of problems) and
+ * that is also able to pause and resume the marketplace interactions.
  * - Spender: the smart contract itself, that acts as a subject who is
- *      able to spend tokes on behalf of the Buyer.
- * - Pauser: wallet entitled to pause and resume the overall
- *      contract interactions.
+ * able to spend tokes on behalf of the Buyer.
+ * - Orders manager: wallet entitled to pause and resume the interactions
+ * with the marketplace.
  *
- * ----- Information provided by the contract state -----
+ * ----- Information provided by the contract storage -----
  *
  * 1. Current active MarketOrders
  * 2. Details about each MarketOrder
@@ -451,7 +452,7 @@ contract SnowMarketplace is AccessControl {
             }
             // Transfer NFT
             ERC721 collectionInstance = ERC721(contractAddress);
-            collectionInstance.transferFrom(from, to, tokenId);
+            collectionInstance.safeTransferFrom(from, to, tokenId);
         } else {
             // Can be only an ERC1155
             // Update counter
@@ -509,7 +510,8 @@ contract SnowMarketplace is AccessControl {
     /**
      * @dev default implementation plus a check
      * to verify that the transaction sender has been granted
-     * the ORDERS_MANAGER_ROLE role.
+     * the ORDERS_MANAGER_ROLE role to prevent receiving NFTs from
+     * unsafe users.
      */
     function onERC1155Received(
         address operator,
@@ -517,7 +519,7 @@ contract SnowMarketplace is AccessControl {
         uint256 id,
         uint256 value,
         bytes calldata data
-    ) public returns (bytes4) {
+    ) public view returns (bytes4) {
         require(
             hasRole(ORDERS_MANAGER_ROLE, from),
             "The contract can't receive NFTs from this address"
@@ -534,7 +536,8 @@ contract SnowMarketplace is AccessControl {
     /**
      * @dev default implementation plus a check
      * to verify that the transaction sender has been granted
-     * the ORDERS_MANAGER_ROLE role.
+     * the ORDERS_MANAGER_ROLE role to prevent receiving NFTs from
+     * unsafe users.
      */
     function onERC1155BatchReceived(
         address operator,
@@ -542,7 +545,7 @@ contract SnowMarketplace is AccessControl {
         uint256[] calldata ids,
         uint256[] calldata values,
         bytes calldata data
-    ) public returns (bytes4) {
+    ) public view returns (bytes4) {
         require(
             hasRole(ORDERS_MANAGER_ROLE, from),
             "The contract can't receive NFTs from this address"
@@ -553,6 +556,29 @@ contract SnowMarketplace is AccessControl {
                 keccak256(
                     "onERC1155BatchReceived(address,address,uint256[],uint256[],bytes)"
                 )
+            );
+    }
+
+    /**
+     * @dev default implementation plus a check
+     * to verify that the transaction sender has been granted
+     * the ORDERS_MANAGER_ROLE role to prevent receiving NFTs from
+     * unsafe users.
+     */
+    function onERC721Received(
+        address operator,
+        address from,
+        uint256 tokenId,
+        bytes memory data
+    ) public view returns (bytes4) {
+        require(
+            hasRole(ORDERS_MANAGER_ROLE, from),
+            "The contract can't receive NFTs from this address"
+        );
+
+        return
+            bytes4(
+                keccak256("onERC721Received(address,address,uint256,bytes)")
             );
     }
 }

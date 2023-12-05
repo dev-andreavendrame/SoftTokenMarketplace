@@ -79,7 +79,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		const initialBalance = await snowTracker.balances(userOne.address);
 		await snowTracker.addTokens(userOne.address, tokensToAdd);
 		await snowTracker.removeTokens(userOne.address, tokensToRemove);
-		expect(await snowTracker.balances(userOne.address)).to.be.equal(parseInt(initialBalance) + tokensToAdd - tokensToRemove);
+		expect(await snowTracker.balances(userOne.address)).to.be.equal(
+			parseInt(initialBalance) + tokensToAdd - tokensToRemove
+		);
 	});
 
 	it("Should allow to batch remove tokens to a list of wallets", async function () {
@@ -95,8 +97,12 @@ describe("Snow token tracker and marketplace - Test", function () {
 		const result = await snowTracker.callStatic.batchRemoveTokens([userOne.address, userTwo.address], tokensToRemove);
 		await snowTracker.batchRemoveTokens([userOne.address, userTwo.address], tokensToRemove);
 
-		expect(await snowTracker.balances(userOne.address)).to.be.equal(parseInt(initialUserOneBalance) - tokensToRemove[0]);
-		expect(await snowTracker.balances(userTwo.address)).to.be.equal(parseInt(initialUserTwoBalance) - tokensToRemove[1]);
+		expect(await snowTracker.balances(userOne.address)).to.be.equal(
+			parseInt(initialUserOneBalance) - tokensToRemove[0]
+		);
+		expect(await snowTracker.balances(userTwo.address)).to.be.equal(
+			parseInt(initialUserTwoBalance) - tokensToRemove[1]
+		);
 
 		expect(parseInt(result)).to.equal(totalRemoved);
 	});
@@ -120,21 +126,27 @@ describe("Snow token tracker and marketplace - Test", function () {
 		const tokensToAdd = 100;
 		await snowTracker.addTokens(userOne.address, tokensToAdd);
 		const tokensToRemove = tokensToAdd * 2;
-		await expect(snowTracker.removeTokens(userOne.address, tokensToRemove)).to.be.revertedWith("Can't remove more than the available tokens");
+		await expect(snowTracker.removeTokens(userOne.address, tokensToRemove)).to.be.revertedWith(
+			"Can't remove more than the available tokens"
+		);
 	});
 
 	it("Should revert with a custom error when trying to remove 0 tokens from a user balance", async function () {
 		const { snowTracker, userOne } = await loadFixture(deployContractsFixture);
 
 		const tokensToRemove = 0;
-		await expect(snowTracker.removeTokens(userOne.address, tokensToRemove)).to.be.revertedWith("Can't remove zero tokens");
+		await expect(snowTracker.removeTokens(userOne.address, tokensToRemove)).to.be.revertedWith(
+			"Can't remove zero tokens"
+		);
 	});
 
 	it("Should revert the token transfer if the sender doesn't have enough in his balance", async function () {
 		const { snowTracker, userTwo } = await loadFixture(deployContractsFixture);
 
 		const tokensToRemove = 110;
-		await expect(snowTracker.transferTokens(userTwo.address, tokensToRemove)).to.be.revertedWith("Can't transfer more tokens than the available balance");
+		await expect(snowTracker.transferTokens(userTwo.address, tokensToRemove)).to.be.revertedWith(
+			"Can't transfer more tokens than the available balance"
+		);
 	});
 
 	it("Should revert if a wallet without the role MANAGER_ROLE tries to add tokens to another wallet address", async function () {
@@ -231,7 +243,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		await simple1155.mint(deployer.address, tokenId, amount, "0x00");
 		await marketplace.grantRole(ORDERS_MANAGER_ROLE, deployer.address);
 
-		await expect(marketplace.createOrder(freePrice, ERC1155_NFT_TYPE, simple1155.address, tokenId)).to.be.revertedWith("Can't create a free order");
+		await expect(marketplace.createOrder(freePrice, ERC1155_NFT_TYPE, simple1155.address, tokenId)).to.be.revertedWith(
+			"Can't create a free order"
+		);
 	});
 
 	it("Should allow a wallet address WITH the ORDERS_MANAGER_ROLE role to create a valid MarketOrder for an ERC1155 token", async function () {
@@ -284,7 +298,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		const tokenId = 1234;
 		const amount = 2;
 		await simple1155.mint(deployer.address, tokenId, amount, "0x00");
-		await expect(simple1155.safeTransferFrom(deployer.address, marketplace.address, tokenId, amount, "0x00")).to.be.revertedWith("The contract can't receive NFTs from this address");
+		await expect(
+			simple1155.safeTransferFrom(deployer.address, marketplace.address, tokenId, amount, "0x00")
+		).to.be.revertedWith("The contract can't receive NFTs from this address");
 	});
 
 	it("Should allow a wallet address WITH the ORDERS_MANAGER_ROLE role to create a valid MarketOrder for an ERC721 token", async function () {
@@ -330,6 +346,18 @@ describe("Snow token tracker and marketplace - Test", function () {
 		expect(orderDetails.taker).to.equal(ZERO_ADDRESS);
 	});
 
+	it("Should NOT allow a wallet without the MANAGER_ROLE to send an ERC721 token to the contract", async function () {
+		const { deployer, userOne, marketplace, simple721 } = await loadFixture(deployContractsFixture);
+
+		// Mint to deployer wallet ERC1155 tokens
+
+		await simple721.safeMint(userOne.address);
+		const balance = await simple721.balanceOf(userOne.address);
+		await expect(
+			simple721.connect(userOne)["safeTransferFrom(address,address,uint256)"](userOne.address, marketplace.address, 0)
+		).to.be.revertedWith("The contract can't receive NFTs from this address");
+	});
+
 	it("Should NOT allow a wallet address WITH the ORDERS_MANAGER_ROLE role to create an ERC721 order if the marketplace is paused", async function () {
 		const { deployer, marketplace, simple721 } = await loadFixture(deployContractsFixture);
 
@@ -350,7 +378,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		await marketplace.pauseMarketplace();
 
 		// Try to create a new order
-		await expect(marketplace.createOrder(orderPrice, ERC721_NFT_TYPE, simple721.address, tokenId)).to.be.revertedWith("Marketplace not active");
+		await expect(marketplace.createOrder(orderPrice, ERC721_NFT_TYPE, simple721.address, tokenId)).to.be.revertedWith(
+			"Marketplace not active"
+		);
 	});
 
 	it("Should allow a wallet address WITH the ORDERS_MANAGER_ROLE role to create an ERC721 order after the marketplace is paused and then unpaused", async function () {
@@ -395,7 +425,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		await simple1155.setApprovalForAll(marketplace.address, true);
 
 		// Create orders
-		const orderIds = bigArrayToArray(await marketplace.callStatic.createBatchERC1155Order(orderPrice, simple1155.address, tokenId, amount));
+		const orderIds = bigArrayToArray(
+			await marketplace.callStatic.createBatchERC1155Order(orderPrice, simple1155.address, tokenId, amount)
+		);
 		await marketplace.createBatchERC1155Order(orderPrice, simple1155.address, tokenId, amount);
 		var currentNftsBalance = await simple1155.balanceOf(marketplace.address, tokenId);
 
@@ -443,7 +475,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 	describe("Marketplace not empty testing", function () {
 		async function createErc721OrderFixture() {
-			const { deployer, userOne, userTwo, snowTracker, marketplace, simple721, simple1155 } = await loadFixture(deployContractsFixture);
+			const { deployer, userOne, userTwo, snowTracker, marketplace, simple721, simple1155 } = await loadFixture(
+				deployContractsFixture
+			);
 
 			// Mint to deployer wallet ERC1155 tokens
 			const tokenId = 0;
@@ -461,7 +495,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		}
 
 		async function createErc1155OrderFixture() {
-			const { deployer, userOne, userTwo, snowTracker, marketplace, simple721, simple1155 } = await loadFixture(deployContractsFixture);
+			const { deployer, userOne, userTwo, snowTracker, marketplace, simple721, simple1155 } = await loadFixture(
+				deployContractsFixture
+			);
 
 			// Mint to deployer wallet ERC1155 tokens
 			const tokenId = 1234;
@@ -488,7 +524,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 			// Give to the userOne enough tokens to fulfill the order
 			const orderId = activeOrders[0].toNumber();
-			await expect(marketplace.connect(userOne).fulfillOrder(orderId)).to.be.revertedWith("Not enough tokens available to buy the NFT");
+			await expect(marketplace.connect(userOne).fulfillOrder(orderId)).to.be.revertedWith(
+				"Not enough tokens available to buy the NFT"
+			);
 		});
 
 		it("Should NOT allow to fulfill an ERC721 MarketOrder if the marketplace can't spend users SNOW tokens", async function () {
@@ -515,7 +553,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 			// Give the marketplace the permission to spend users tokens
 			await snowTracker.grantRole(SPENDER_ROLE, marketplace.address);
 
-			await expect(marketplace.connect(userOne).fulfillOrder(INVALID_ORDER_ID)).to.be.revertedWith("Invalid order ID provided");
+			await expect(marketplace.connect(userOne).fulfillOrder(INVALID_ORDER_ID)).to.be.revertedWith(
+				"Invalid order ID provided"
+			);
 		});
 
 		it("Should allow to fulfill an ERC721 MarketOrder if the balance of SNOW tokens is enough", async function () {
