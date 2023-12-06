@@ -20,55 +20,64 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
- * @dev Contract that allows addresses to claim NFTs stored in the contract itself.
+ * @dev This contract allows an address to claim NFTs stored in the contract itself.
  *
- * The claim is divided into 2 types and threated as events: SimpleClaimEvent and RandomClaimEvent.
+ * The claim is divided into 2 types, called claim events:
+ * SimpleClaimEvent and RandomClaimEvent.
  *
- * A claim event is associated with a specific ERC1155 contract and users can claim
+ * A claim event is associated to a specific ERC1155 contract and users can claim
  * only NFTs that belong to the same contract in the same claim event.
- * In order to claim one or more NFTs related to a specific event a user needs to be elegible.
+ * In order to claim (one or more NFTs) in a specific claim event the address
+ * must be whitelisted and a number of NFTs needs to be assigned to be claimed in
+ * the specified event.
  *
- * The MANAGER_ROLE is a role assigned to an address that can manage operations like
+ * ----- Access control -----
  *
- * - Allow an address to claim N (with N > 0) in a specific event
- * - Remove an address from being able to claim N (with N > 0) in a specific event
- * - Whitelist an operator to let it sends NFTs to this contract in order to have
- *      NFTs distributable in a claim event
- * - Whitelist an operator to let it sends NFTs to this contract in order to have
- *      NFTs distributable in a claim event
- * - Create and stop a specific claim event
+ * A contract manager (granted MANAGER_ROLE) can:
+ * - whitelist an address to claim N (with N > 0) in a specific claim event;
+ * - un-whitelist an address from being able to claim N (with N > 0) in a specific event;
+ * - disable permanently a claim event, so nobody will be able to claim through it anymore.
+ *
+ * The default contract admin (granted DEFAULT_ADMIN_ROLE) can:
+ * - Grant the NFTs operator role (NFTS_OPERATOR_ROLE) to allow/revoke the permission
+ * of being able to send NFTs to this contract in order to them in claim events.
+ *
+ * The contract pauser (granted PAUSER_ROLE) can:
+ * - Stop and resume in one time all the claim events currently active.
  *
  * ---- Claim events details ----
  *
  * Simple Claim
  *
- * A wallet address that is able to claim in this event type can claim at least 1 ERC1155 (NFT) copy
- * stored in the contract of a specific ERC1155 contract address
+ * A wallet address that is able to claim in this event type can claim at least
+ * 1 ERC1155 (NFT) copy stored in this contract of a specific ERC1155 contract address
  *
  * Random Claim
  *
- * A wallet address that is able to claim in this event type can claim randomly at least 1 ERC1155 (NFT) copy
- * from a specified set of ERC1155 token IDs. These tokens are stored in the contract and belong all
- * to the same ERC1155 contract.
+ * A wallet address that is able to claim in this event type can claim randomly at
+ * least 1 ERC1155 (NFT) copy from a specified set of ERC1155 token IDs. These tokens
+ * are stored in the contract and come all from the same ERC1155 contract.
  *
  * ---- WARNINGS ----
  *
  * - There are no limitations related to the presence of ERC1155 tokens into the smart
- *      contract when a MANAGER_ROLE wallet address creates a Claim event.
+ * contract when creating a new Claim event (if not NFTs are contained in the contract on
+ * the claim time the transaction will be simply reverted).
  *
- * - A RandomClaimEvent or a SimpleClaimEvent can be created without having deposited the necessary
- *      ERC1155 token(s) into this contract.
+ * - A RandomClaimEvent or a SimpleClaimEvent can be created without having deposited the
+ * necessary ERC1155 token(s) into this contract (complementary to the warning above).
  *
- * - If a wallet address tries to claim more ERC1155 tokens than the amount available the result
- *      of the claiming will be a claim of all the available tokens.
+ * - If a wallet address tries to claim more ERC1155 tokens than the amount available
+ * the result of the claiming will be the claim of all the available tokens.
  *
- * - A wallet address that is elegible to claim in a specific event can't claim 0 ERC1155 tokens.
- *      In this case the transaction reverts.
+ * - A wallet address that is whitelisted to claim in a specific event can't claim
+ * 0 ERC1155 tokens. In this case the transaction reverts.
  *
- * - A wallet address with the MANAGER_ROLE role can add/remove the permission for a specific
- *      wallet address to partecipate in a claim event anytime
+ * - A wallet address with the MANAGER_ROLE role can add/remove the permission for
+ * a specific wallet address to partecipate in a claim event anytime (this includes the
+ * case when a claim event is still running).
  *
- * - Claim events don't have an expiration block.
+ * - Claim events don't have an expiration block (a claim event can run forever).
  */
 contract Erc1155Claimer is
     Pausable,
@@ -76,27 +85,25 @@ contract Erc1155Claimer is
     IERC1155Receiver,
     ReentrancyGuard
 {
-    /**
-     * -----------------------------------------------------
-     * -------------------- CONSTANTS ----------------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Contract constants ------------------------//
+    //------------------------------------------------------------------//
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
+    bytes32 public constant NFTS_OPERATOR_ROLE =
+        keccak256("NFTS_OPERATOR_ROLE");
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- CLAIM EVENTS -------------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Contract events ---------------------------//
+    //------------------------------------------------------------------//
 
-    event ADDED_SIMPLE_CLAIM_ENTRY(
+    event UPDATED_SIMPLE_CLAIM_ENTRY(
         uint256 indexed _eventId,
         uint256 indexed _claimableAmount
     );
 
-    event ADDED_RANDOM_CLAIM_ENTRY(
+    event UPDATED_RANDOM_CLAIM_ENTRY(
         uint256 indexed _eventId,
         uint256 indexed _claimableAmount
     );
@@ -119,24 +126,9 @@ contract Erc1155Claimer is
         address _creator
     );
 
-    event NFTS_OPERATOR_ADDED(
-        address indexed _newOperator,
-        address indexed _addedBy
-    );
-
-    event NFTS_OPERATOR_REMOVED(
-        address indexed _oldOperator,
-        address indexed _removeddBy
-    );
-
-    /**
-     * -----------------------------------------------------
-     * -------------------- CONTRACT STATE -----------------
-     * -----------------------------------------------------
-     */
-
-    // Addresses that can manage Claim entries
-    mapping(address => bool) public whitelistedWallets;
+    //------------------------------------------------------------------//
+    //---------------------- Contract storage --------------------------//
+    //------------------------------------------------------------------//
 
     // Counters for different claim event types
     uint256 private _simpleClaimCounter;
@@ -151,14 +143,14 @@ contract Erc1155Claimer is
     mapping(uint256 => RandomClaimEvent) public randomClaimEventDetails;
 
     // Claim Events entries permissions
-    mapping(uint256 => mapping(address => uint256)) public simpleClaimableNfts; // SimpleClaimEvent.id => wallet address => claimable NFTs amount
-    mapping(uint256 => mapping(address => uint256)) public randomClaimableNfts; // RandomClaimEvent.id => wallet address => claimable NFTs amount
+    // SimpleClaimEvent.id => wallet address => claimable NFTs amount
+    mapping(uint256 => mapping(address => uint256)) public simpleClaimableNfts;
+    // RandomClaimEvent.id => wallet address => claimable NFTs amount
+    mapping(uint256 => mapping(address => uint256)) public randomClaimableNfts;
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- ENUMERATORS & STRUCTS ----------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Enumerators and structs -------------------//
+    //------------------------------------------------------------------//
 
     enum ClaimType {
         SIMPLE,
@@ -179,23 +171,18 @@ contract Erc1155Claimer is
         uint256[] tokenIds;
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- IMPLEMENTATION -----------------
-     * -----------------------------------------------------
-     */
-
+    //------------------------------------------------------------------//
+    //---------------------- Simple constructor ------------------------//
+    //------------------------------------------------------------------//
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- MANAGEMENT FUNCTIONS -----------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Claim pause management --------------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev default implementation
@@ -211,60 +198,21 @@ contract Erc1155Claimer is
         _unpause();
     }
 
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- MANAGE WHITELISTED NFTS SENDERS ---------------
-     * --------------------------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Claim entries management ------------------//
+    //------------------------------------------------------------------//
 
     /**
-     * @dev Whitelist a specific address letting it be able to send NFTs to this contract
-     *
-     * @param newSender Address to add to the whitelist
-     */
-    function addWhitelistedAddress(address newSender)
-        external
-        onlyRole(MANAGER_ROLE)
-    {
-        require(newSender != address(0), "You must provide a valid address");
-
-        // Add support
-        whitelistedWallets[newSender] = true;
-
-        emit NFTS_OPERATOR_ADDED(newSender, _msgSender());
-    }
-
-    /**
-     * @dev Remove the whitelist from specific address.
-     * From now on this address will no longer be able to send NFTs to this contract.
-     *
-     * @param oldSender Address to remove from the whitelist
-     */
-    function removeWhitelistedAddress(address oldSender)
-        external
-        onlyRole(MANAGER_ROLE)
-    {
-        require(oldSender != address(0), "You must provide a valid address");
-
-        // Remove support
-        whitelistedWallets[oldSender] = false;
-
-        emit NFTS_OPERATOR_REMOVED(oldSender, _msgSender());
-    }
-
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- MANAGE CLAIMING ENTRIES -----------------------
-     * --------------------------------------------------------------------
-     */
-
-    /**
-     * @dev Add the permission for a specified address to claim a specified
-     * number of copies of a specified ERC1155 NFT
+     * @dev Let a {claimer} address claim a {claimableAmount} number
+     * of copies of the NFT included in the {simpleClaimEventId} event.
      *
      * @param simpleClaimEventId ID of the claim event
-     * @param claimer address to let be able to claim in this event
-     * @param claimableAmount NFT copies to let the user withdraw
+     * @param claimer address to which set the claimable NFTs amount
+     * @param claimableAmount NFT copies to let the user claim
+     *
+     * Note: the transaction sender can set the {claimableAmount}
+     * to 0 in order to revoke the permission of the {claimer}
+     * to claim in the specified {simpleClaimEventId} event.
      */
     function setSimpleClaimEntry(
         uint256 simpleClaimEventId,
@@ -282,16 +230,21 @@ contract Erc1155Claimer is
 
         simpleClaimableNfts[simpleClaimEventId][claimer] = claimableAmount;
 
-        emit ADDED_SIMPLE_CLAIM_ENTRY(simpleClaimEventId, claimableAmount);
+        emit UPDATED_SIMPLE_CLAIM_ENTRY(simpleClaimEventId, claimableAmount);
     }
 
     /**
-     * @dev Add in batch the permission for a specified array of addresses to
-     * claim a specified number of copies of a specified ERC1155 NFT
+     * @dev Add in batch the permission for a specified array of
+     * {claimers} addresses to claim a specified {claimableAmounts}
+     * number of copies in the {simpleClaimEventId} claim event
      *
      * @param simpleClaimEventId ID of the claim event
-     * @param claimers addresses to let be able to claim in this event
-     * @param claimableAmounts NFT copies to let the users withdraw
+     * @param claimers addresses to which set the claimable NFTs amount
+     * @param claimableAmounts NFT copies to let the users claim
+     *
+     * Note: the transaction sender can set the {claimableAmounts}
+     * to an array of 0s in order to revoke the permission of the
+     * {claimers} to claim in the specified {simpleClaimEventId} event.
      */
     function setBatchSimpleClaimEntries(
         uint256 simpleClaimEventId,
@@ -322,20 +275,27 @@ contract Erc1155Claimer is
             totalClaimableAmount = totalClaimableAmount + claimableAmounts[i];
         }
 
-        emit ADDED_SIMPLE_CLAIM_ENTRY(simpleClaimEventId, totalClaimableAmount);
+        emit UPDATED_SIMPLE_CLAIM_ENTRY(
+            simpleClaimEventId,
+            totalClaimableAmount
+        );
     }
 
     /**
-     * @dev Add the permission for a specified address to claim a specified number of NFTs
-     * from a specific NFT pool made by different NFTs that belong to the same ERC1155 contract
+     * @dev Let a {claimer} address claim a {claimableAmount} number
+     * of copies of the NFTs included in the {randomClaimEventId} event.
      *
      * @param randomClaimEventId ID of the claim event
-     * @param newClaimer address to let be able to claim in this event
-     * @param claimableAmount NFT copies to let the user withdraw
+     * @param claimer address to which set the claimable NFTs amount
+     * @param claimableAmount NFT copies to let the user claim
+     *
+     * Note: the transaction sender can set the {claimableAmount}
+     * to 0 in order to revoke the permission of the {claimer} to
+     * claim in the specified {randomClaimEventId} event.
      */
     function setRandomClaimEntry(
         uint256 randomClaimEventId,
-        address newClaimer,
+        address claimer,
         uint256 claimableAmount
     ) external onlyRole(MANAGER_ROLE) {
         // Check if specified ID is still active
@@ -347,19 +307,23 @@ contract Erc1155Claimer is
         require(claimableAmount > 0, "Can't let claim 0 NFT copies");
 
         // SimpleClaimEvent.id => wallet address => claimable NFTs amount
-        randomClaimableNfts[randomClaimEventId][newClaimer] = claimableAmount;
+        randomClaimableNfts[randomClaimEventId][claimer] = claimableAmount;
 
-        emit ADDED_RANDOM_CLAIM_ENTRY(randomClaimEventId, claimableAmount);
+        emit UPDATED_RANDOM_CLAIM_ENTRY(randomClaimEventId, claimableAmount);
     }
 
     /**
-     * @dev Add in batch the permission for the specified addresses to claim a
-     * specified number of NFTs from a specific NFT pool made by different NFTs
-     * that belong to the same ERC1155 contract
+     * @dev Add in batch the permission for a specified array of
+     * {claimers} addresses to claim a specified {claimableAmounts}
+     * number of copies in the {randomClaimEventId} claim event
      *
      * @param randomClaimEventId ID of the claim event
      * @param claimers addresses to let be able to claim in this event
-     * @param claimableAmounts NFT copies to let the users withdraw
+     * @param claimableAmounts NFT copies to let the users claim
+     *
+     * Note: the transaction sender can set the {claimableAmount}
+     * to 0 in order to revoke the permission of the {claimer} to
+     * claim in the specified {randomClaimEventId} event.
      */
     function setBatchRandomClaimEntries(
         uint256 randomClaimEventId,
@@ -390,15 +354,21 @@ contract Erc1155Claimer is
             totalClaimableAmount = totalClaimableAmount + claimableAmounts[i];
         }
 
-        emit ADDED_RANDOM_CLAIM_ENTRY(randomClaimEventId, totalClaimableAmount);
+        emit UPDATED_RANDOM_CLAIM_ENTRY(
+            randomClaimEventId,
+            totalClaimableAmount
+        );
     }
 
     /**
-     * @dev Disable a claim event so no wallet will be able to claim
-     * other NFTs through it
+     * @dev Disable a claim event so the users will be able no
+     * longer able to claim other NFTs through it (PERMANENT OPERATION).
      *
      * @param claimType one value in the ClaimType enum set
      * @param claimEventId ID of the event to disable
+     *
+     * Note: reverts if a wrong {claimType} is provided or if the
+     * {claimEventId} doesn't exist.
      */
     function disableClaimEvent(ClaimType claimType, uint256 claimEventId)
         external
@@ -418,17 +388,17 @@ contract Erc1155Claimer is
     /**
      * @dev Create a new Simple Claim event.
      * Through this event allowed addresses will be able to claim
-     * multiple copies of a specific ERC1155 NFT.
+     * one or more copies of a specific ERC1155 NFT.
      *
-     * @param contractAddress address of the ERC1155 contract
-     * @param tokenId ID of the token that will be claimed
+     * @param contractAddress address of the ERC1155 contract from
+     * which the NFT comes from.
+     * @param tokenId ID of the NFT that will be claimable.
      */
     function createSimpleClaimEvent(address contractAddress, uint256 tokenId)
         external
         onlyRole(MANAGER_ROLE)
     {
-        uint256 currentEventId = _simpleClaimCounter;
-        _simpleClaimCounter = _simpleClaimCounter + 1;
+        uint256 currentEventId = _simpleClaimCounter++;
 
         SimpleClaimEvent memory newClaimEvent = SimpleClaimEvent(
             currentEventId,
@@ -451,7 +421,9 @@ contract Erc1155Claimer is
     /**
      * @dev Create a new Random Claim event.
      * Through this event allowed addresses will be able to claim
-     * multiple copies of a specific ERC1155 NFTs set.
+     * one or more copies from a specific ERC1155 NFTs set.
+     * The NFTs set is made up of different token IDs that come
+     * from the same ERC1155 contract.
      *
      * @param contractAddress address of the ERC1155 contract
      * @param tokenIds IDs of the token that will be claimed
@@ -460,10 +432,9 @@ contract Erc1155Claimer is
         address contractAddress,
         uint256[] memory tokenIds
     ) external onlyRole(MANAGER_ROLE) {
-        uint256 currentEventId = _randomClaimCounter;
-        _randomClaimCounter = _randomClaimCounter + 1;
+        uint256 currentEventId = _randomClaimCounter++;
 
-        require(tokenIds.length > 0, "Can't create a claim set with 0 items");
+        require(tokenIds.length > 0, "Can't create an empty claimable set");
 
         RandomClaimEvent memory newClaimEvent = RandomClaimEvent(
             currentEventId,
@@ -483,20 +454,23 @@ contract Erc1155Claimer is
         );
     }
 
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- CLAIM FUNCTIONS IMPLEMENTATIONS ---------------
-     * --------------------------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Claim functions logic ---------------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev Let the transaction sender to claim the NFTs that he is allowed
-     * to do related to a specific claim event
+     * to do in a specified claim event.
      *
-     * @param claimType one value in the ClaimType enum set
+     * @param claimType type of claim event. A value of type {ClaimType}
      * @param claimId ID of the claim event
      *
      * @return the number of NFTs claimed
+     *
+     * Note: depending on the current NFTs available in the contract,
+     * the number of claimed tokens can be between 0 and the number
+     * of copies that the transaction sender is entitled to claim.
+     * Reverts if the {claimType} is invalid.
      */
     function claim(ClaimType claimType, uint256 claimId)
         public
@@ -641,11 +615,9 @@ contract Erc1155Claimer is
         return claimedNfts;
     }
 
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- RANDOM GENERATION FUNCTION --------------------
-     * --------------------------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Pseudo-random generator functions ---------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev This function calculate the amounts of NFTs to claim given a specific
@@ -973,11 +945,9 @@ contract Erc1155Claimer is
         }
     }
 
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- UTILITIES TO MANAGE CLAIM EVENTS --------------
-     * --------------------------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Utilities ---------------------------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev Get the current active Simple Claim events
@@ -1008,9 +978,12 @@ contract Erc1155Claimer is
     }
 
     /**
-     * @dev Removes a Simple Claim event from the active list
+     * @dev Remove a Simple Claim event from the active list
      *
      * @param orderId ID of the event active Simple Claim event
+     *
+     * Note: reverts if the specified ID does not correspond to
+     * an active event.
      */
     function _removeSimpleClaimActiveEvent(uint256 orderId) private {
         // Delete the order from the active Ids list
@@ -1025,7 +998,7 @@ contract Erc1155Claimer is
             }
         }
 
-        require(idFound, "The object to remove is not in the active list");
+        require(idFound, "Simple Claim event not in the active list");
 
         if (orderIndex != activeOrdersNumber - 1) {
             // Need to swap the order to delete with the last one and procede as above
@@ -1041,6 +1014,9 @@ contract Erc1155Claimer is
      * @dev Removes a Random Claim event from the active list
      *
      * @param orderId ID of the event active Random Claim event
+     *
+     * Note: reverts if the specified ID does not correspond to
+     * an active event.
      */
     function _removeRandomClaimActiveEvent(uint256 orderId) private {
         // Delete the order from the active Ids list
@@ -1055,10 +1031,7 @@ contract Erc1155Claimer is
             }
         }
 
-        require(
-            idFound,
-            "The order to remove is not in the active loan orders list"
-        );
+        require(idFound, "Random Claim event not in the active list");
 
         if (orderIndex != activeOrdersNumber - 1) {
             // Need to swap the order to delete with the last one and procede as above
@@ -1070,16 +1043,13 @@ contract Erc1155Claimer is
         _randomClaimEventsActive.pop();
     }
 
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- ERC1155 RECEVIER IMPLEMENTATION ---------------
-     * --------------------------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- ERC1155 Receiver implementation -----------//
+    //------------------------------------------------------------------//
 
     /**
-     * @dev default implementation plus a check
-     * to verify if the 'operator' is whitelisted and
-     * allowed to send NFTs to this contract
+     * @dev default implementation plus a check to verify
+     * that the 'operator' is allowed to send NFTs to this contract
      */
     function onERC1155Received(
         address operator,
@@ -1089,7 +1059,7 @@ contract Erc1155Claimer is
         bytes calldata data
     ) public view returns (bytes4) {
         require(
-            whitelistedWallets[operator] == true,
+            hasRole(NFTS_OPERATOR_ROLE, operator),
             "The contract can't receive NFTs from this operator"
         );
 
@@ -1102,9 +1072,8 @@ contract Erc1155Claimer is
     }
 
     /**
-     * @dev default implementation plus a check
-     * to verify if the 'operator' is whitelisted and
-     * allowed to send NFTs to this contract
+     * @dev default implementation plus a check to verify
+     * that the 'operator' is allowed to send NFTs to this contract
      */
     function onERC1155BatchReceived(
         address operator,
@@ -1114,7 +1083,7 @@ contract Erc1155Claimer is
         bytes calldata data
     ) public view returns (bytes4) {
         require(
-            whitelistedWallets[operator] == true,
+            hasRole(NFTS_OPERATOR_ROLE, operator),
             "The contract can't receive NFTs from this operator"
         );
 
@@ -1125,10 +1094,4 @@ contract Erc1155Claimer is
                 )
             );
     }
-
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- TESTING ---------------------------------------
-     * --------------------------------------------------------------------
-     */
 }
