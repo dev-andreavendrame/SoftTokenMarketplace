@@ -16,8 +16,10 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 /**
- * @dev Contract that allows to create a soft-token, so a sort of
- * on-chain balances tracker for a NON-ERC20 token.
+ * @dev This contract allows to create a soft-token, which means
+ * a sort of on-chain balances tracker that partially emulates
+ * the behavior of an ERC20 token.
+ *
  * The aforementioned soft-token can be:
  * 1. Added to the balance of a specified wallet;
  * 2. Removed from the balance of a specified wallet;
@@ -26,38 +28,35 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  *
  * ----- Contract actors -----
  *
- * - Holder: wallet address that owns 0 or more soft-tokens.
- * - Manager: wallet that is able to manage soft-token wallets balances
- *      by adding and removing arbitrary amounts.
- * - Spender: an address, that acts as a subject who is
- *      able to spend tokes on behalf of a general Holder (the Spender
- *      is a role that is intended to be granted to marketplaces contracts).
+ * - Holder (No roles granted): wallet address that owns 0
+ * or more "soft-tokens".
+ * - Manager (granted MANAGER_ROLE): wallet that is able to manage
+ * soft-token wallets balances by adding and removing arbitrary amounts.
+ * - Spender (granted SPENDER_ROLE): an address, that acts as a subject
+ * who is able to spend tokes on behalf of a general Holder (the Spender
+ * is a role that is intended to be granted to marketplace contracts).
  * - Pauser: wallet entitled to pause and resume the overall
- *      contract interactions.
+ * contract interactions (add, remove, transfer and spend tokens actions).
  *
  * ----- Information provided by the contract state -----
  *
- * 1. Total unique holders (number)
- * 2. Total supply (number)
- * 3. Balance of soft-token of a specified wallet address.
+ * 1. Current total unique holders
+ * 2. Current total supply
+ * 3. Balance of soft-token of a specified wallet address
  *
  */
 contract SnowTracker is Pausable, AccessControl {
-    /**
-     * -----------------------------------------------------
-     * -------------------- CONSTANTS ----------------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Contract constants ------------------------//
+    //------------------------------------------------------------------//
 
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- TOKEN EVENTS -------------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Contract events ---------------------------//
+    //------------------------------------------------------------------//
 
     event TokensAdded(
         address indexed _to,
@@ -84,11 +83,9 @@ contract SnowTracker is Pausable, AccessControl {
         uint256 indexed _blockNumber
     );
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- CONTRACT STATE -----------------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Contract storage --------------------------//
+    //------------------------------------------------------------------//
 
     // Balances tracking
     mapping(address => uint256) public balances;
@@ -97,28 +94,23 @@ contract SnowTracker is Pausable, AccessControl {
     uint256 public uniqueHolders;
     uint256 public totalSupply;
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- IMPLEMENTATION -----------------
-     * -----------------------------------------------------
-     */
-
+    //------------------------------------------------------------------//
+    //---------------------- Constructor and setup ---------------------//
+    //------------------------------------------------------------------//
     constructor() {
         // Grant roles to contract deployer
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
 
-        // Initialize state
+        // Initialize contract state
         uniqueHolders = 0;
         totalSupply = 0;
     }
 
-    /**
-     * -----------------------------------------------------
-     * -------------------- MANAGEMENT FUNCTIONS -----------
-     * -----------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Interactions pause management -------------//
+    //------------------------------------------------------------------//
 
     /**
      * @dev default OpenZeppelin implementation
@@ -134,21 +126,22 @@ contract SnowTracker is Pausable, AccessControl {
         _unpause();
     }
 
-    /**
-     * --------------------------------------------------------------------
-     * -------------------- TOKEN INTERACTION FUNCTIONS -------------------
-     * --------------------------------------------------------------------
-     */
+    //------------------------------------------------------------------//
+    //---------------------- Token interactions ------------------------//
+    //------------------------------------------------------------------//
 
     /**
-     * @dev add tokens to a specified wallet address
+     * @dev add tokens to the balance of a specified wallet address
      *
      * @param to wallet address to add the tokens to
      * @param amount number of tokens to add
+     *
+     * Note: reverts if the number of tokens to add is equal to 0
      */
     function addTokens(address to, uint256 amount)
         public
         onlyRole(MANAGER_ROLE)
+        whenNotPaused
         returns (uint256)
     {
         require(amount > 0, "Can't add zero tokens");
@@ -171,17 +164,24 @@ contract SnowTracker is Pausable, AccessControl {
     }
 
     /**
-     * @dev add in batch tokens to different addresses
+     * @dev add in batch tokens to the balance of different addresses
      *
      * @param to array of addresses to which add the specified tokens amounts
      * @param amounts value of tokens to add to the address at the same index
      * in the 'to' parameter
      *
      * @return the total amount of tokens distributed
+     *
+     * Note: reverts if:
+     * - one of the number of tokens to add in the {amounts} parameter
+     * is equal to 0;
+     * - if the length of the 2 parameters is not the same or if the
+     * number of addresses {to} is equal to 0.
      */
     function batchAddTokens(address[] memory to, uint256[] memory amounts)
         external
         onlyRole(MANAGER_ROLE)
+        whenNotPaused
         returns (uint256)
     {
         require(to.length > 0, "Can't add tokens to 0 addresses");
@@ -200,16 +200,18 @@ contract SnowTracker is Pausable, AccessControl {
     }
 
     /**
-     * @dev remove tokens from a specified wallet address
+     * @dev remove tokens from the balance of a specified wallet address
      *
      * @param from wallet address to remove the tokens from
-     * @param amount number of tokens to add
+     * @param amount number of tokens to remove
      *
-     * Note: can't remove more tokens than the current balance
+     * Note: reverts if the transaction sender tries to
+     * remove more tokens than the current balance
      */
     function removeTokens(address from, uint256 amount)
         public
         onlyRole(MANAGER_ROLE)
+        whenNotPaused
         returns (uint256)
     {
         require(amount > 0, "Can't remove zero tokens");
@@ -236,17 +238,24 @@ contract SnowTracker is Pausable, AccessControl {
     }
 
     /**
-     * @dev remove in batch tokens from different addresses
+     * @dev remove in batch tokens from the balances of different addresses
      *
      * @param from array of addresses from which remove the specified tokens amounts
      * @param amounts value of tokens to remove from the address at the same index
      * in the 'from' parameter
      *
      * @return the total amount of tokens removed
+     *
+     * Note: reverts if:
+     * - one of the number of tokens to remove in the {amounts} parameter is
+     * greater than the related user balance,
+     * - the length of the 2 parameters is not the same or if the number
+     * of addresses {to} is equal to 0.
      */
     function batchRemoveTokens(address[] memory from, uint256[] memory amounts)
         public
         onlyRole(MANAGER_ROLE)
+        whenNotPaused
         returns (uint256)
     {
         require(from.length > 0, "Can't remove tokens from 0 addresses");
@@ -271,12 +280,12 @@ contract SnowTracker is Pausable, AccessControl {
      * @param to wallet address that receives the tokens
      * @param amount number of tokens to transfer
      *
-     * Note: can't transfer to the receiver wallet address more
-     * tokens than the current _msgSender() balance
+     * Note: reverts if the transaction sender tries to transfer
+     * to the receiver wallet address more tokens than his current balance
      */
-    function transferTokens(address to, uint256 amount) external {
+    function transferTokens(address to, uint256 amount) external whenNotPaused {
         require(
-            balances[_msgSender()] > amount,
+            balances[_msgSender()] >= amount,
             "Can't transfer more tokens than the available balance"
         );
 
@@ -293,34 +302,44 @@ contract SnowTracker is Pausable, AccessControl {
 
     /**
      * @dev remove tokens from a specified wallet address
-     * because of a particula spending event
+     * as a consequence of a specific external event.
+     * This function will be called from external contracts, so
+     * when called by a marketplace for instance this means that the
+     * an order has been fulfilled and paid through the {buyer} balance
      *
-     * @param by wallet address from which remove the tokens
+     * @param buyer wallet address from which remove the tokens
      * @param amount number of tokens to remove
      *
-     * Note: can't remove from the specified wallet address more
-     * tokens than the current balance
+     * @return the new updated balance
+     *
+     * Note: reverts if the transaction sender tries to remove from
+     * the {buyer} address more tokens than the current balance
      */
-    function spendTokens(address by, uint256 amount)
+    function spendTokens(address buyer, uint256 amount)
         public
         onlyRole(SPENDER_ROLE)
+        whenNotPaused
         returns (uint256)
     {
         require(amount > 0, "Can't spend zero tokens");
+        require(
+            balances[buyer] >= amount,
+            "Can't spend more than the current balance"
+        );
 
         // Update total supply
         totalSupply = totalSupply - amount;
 
         // Update balance
-        uint256 newBalance = balances[by] - amount;
-        balances[by] = newBalance;
+        uint256 newBalance = balances[buyer] - amount;
+        balances[buyer] = newBalance;
 
         // Update total holders
-        if (balances[by] == 0) {
-            uniqueHolders = uniqueHolders - 1;
+        if (balances[buyer] == 0) {
+            uniqueHolders--;
         }
 
-        emit TokensSpent(by, amount, block.number);
+        emit TokensSpent(buyer, amount, block.number);
 
         return newBalance;
     }

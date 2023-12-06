@@ -185,14 +185,14 @@ contract Erc1155Claimer is
     //------------------------------------------------------------------//
 
     /**
-     * @dev default implementation
+     * @dev default OpenZeppelin implementation
      */
     function pause() public onlyRole(PAUSER_ROLE) {
         _pause();
     }
 
     /**
-     * @dev default implementation
+     * @dev default OpenZeppelin implementation
      */
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
