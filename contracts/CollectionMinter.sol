@@ -424,7 +424,8 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             ERC20 tokenInstance = ERC20(erc20TokenAddress);
             uint256 contractBalance = tokenInstance.balanceOf(address(this));
             require(contractBalance > 0, "Cannot withdraw 0 tokens");
-            tokenInstance.transfer(fundsReceiver, contractBalance);
+            bool sent = tokenInstance.transfer(fundsReceiver, contractBalance);
+            require(sent, "Error withdrawing funds");
             emit FundsWithdrawn(fundsReceiver, contractBalance);
         }
     }
@@ -453,7 +454,8 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             tokenInstance.allowance(buyer, address(this)) >= mintPrice,
             "The current allowance can't cover the full mint price."
         );
-        tokenInstance.transferFrom(buyer, address(this), mintPrice);
+        bool sent = tokenInstance.transferFrom(buyer, address(this), mintPrice);
+        require(sent, "Error while paying mint price");
     }
 
     /**
