@@ -55,6 +55,12 @@ describe("Snow token tracker and marketplace - Test", function () {
 		expect(await snowTracker.balances(userOne.address)).to.be.equal(parseInt(initialBalance) + tokensToAdd);
 	});
 
+	it("Should allow the contract deployer to pause and unpause the SnowTracker contract", async function () {
+		const { snowTracker } = await loadFixture(deployContractsFixture);
+		await expect(snowTracker.pause()).to.not.be.reverted;
+		await expect(snowTracker.unpause()).to.not.be.reverted;
+	});
+
 	it("Should allow to batch add tokens to a list of wallets", async function () {
 		const { snowTracker, userOne, userTwo } = await loadFixture(deployContractsFixture);
 
@@ -381,6 +387,23 @@ describe("Snow token tracker and marketplace - Test", function () {
 		await expect(marketplace.createOrder(orderPrice, ERC721_NFT_TYPE, simple721.address, tokenId)).to.be.revertedWith(
 			"Marketplace not active"
 		);
+	});
+
+	it("Should NOT allow to create a new order with an invalid NFT_TYPE parameter", async function () {
+		const { deployer, marketplace, simple721 } = await loadFixture(deployContractsFixture);
+
+		// Mint to deployer wallet ERC1155 tokens
+		const tokenId = 0;
+		const ERC721_NFT_TYPE = 1;
+		const orderPrice = 50;
+		await simple721.safeMint(deployer.address);
+		await marketplace.grantRole(ORDERS_MANAGER_ROLE, deployer.address);
+
+		// Approve the tokens spending from the marketplace side
+		await simple721.setApprovalForAll(marketplace.address, true);
+
+		// Can either fail for not owning the token or if the token doesn't exists
+		await expect(marketplace.createOrder(orderPrice, ERC721_NFT_TYPE, simple721.address, 10)).to.be.reverted;
 	});
 
 	it("Should allow a wallet address WITH the ORDERS_MANAGER_ROLE role to create an ERC721 order after the marketplace is paused and then unpaused", async function () {

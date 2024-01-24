@@ -75,4 +75,8 @@ OpenZeppelin contracts have been used as a safe base to build the custom contrac
 
 # Specifications, functional and technical requirements.
 
-The smart contract files themselves contain comprehensive documentation, which thoroughly outlines the features, dependencies, and limitations of each smart contract, including their overarching functions. Every custom function within these smart contracts is documented to specify its behavior, input parameters, and the resulting output or corresponding side effects. Additionally, relationships, use cases, and both functional and technical requirements are detailed in the [Requirements.pdf](./Requirements.pdf) document.
+The smart contract files include extensive documentation, offering a detailed overview of each contract's features, dependencies, and limitations. This encompasses a comprehensive breakdown of the overarching functions. Each custom function within these contracts is meticulously documented, specifying its behavior, input parameters, and resulting output or associated side effects. Furthermore, relationships, use cases, and both functional and technical requirements are presented in three separate documents, with each one corresponding to a logic block. These documents provide detailed insights into the features outlined above.
+
+For each logical block below is linked the corresponding document:
+
+- Claim ERC1155 tokens - [Documentation](./docs/Doc%20-%20Erc1155Claimer.pdf)
