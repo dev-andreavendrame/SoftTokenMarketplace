@@ -79,4 +79,5 @@ The smart contract files include extensive documentation, offering a detailed ov
 
 For each logical block below is linked the corresponding document:
 
+- Create and sell an ERC721 token collection [Documentation](./docs/Doc%20-%20Create%20and%20sell%20an%20ERC721%20token%20collection.pdf)
 - Claim ERC1155 tokens - [Documentation](./docs/Doc%20-%20Erc1155Claimer.pdf)
