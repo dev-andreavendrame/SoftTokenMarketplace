@@ -81,3 +81,8 @@ For each logical block below is linked the corresponding document:
 
 - Create and sell an ERC721 token collection [Documentation](./docs/Doc%20-%20Create%20and%20sell%20an%20ERC721%20token%20collection.pdf)
 - Claim ERC1155 tokens - [Documentation](./docs/Doc%20-%20Erc1155Claimer.pdf)
+
+# Project assumptions
+
+A document called [Project assumptions](./docs/Project%20assumptions.pdf) contains some important assumptions that have been taken into account in order to design and develop the contracts in this repository.
+Assumptions are divided in logical blocks as used before.
