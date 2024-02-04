@@ -186,6 +186,9 @@ describe("Claim ERC1155 - Test", function () {
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, NFT_ID);
 
 		await expect(erc1155ClaimerInstance.setSimpleClaimEntry(0, userOne.address, 10)).to.not.be.reverted;
+		await expect(erc1155ClaimerInstance.setSimpleClaimEntry(0, userOne.address, 0)).to.be.revertedWith(
+			"Can't let claim 0 NFT copies"
+		);
 	});
 
 	it("Should NOT allow a wallet WITH the MANAGER_ROLE role to add a new batch claim entries for an existing Simple Claim event if the length of the parameters is not the same", async function () {
@@ -199,8 +202,22 @@ describe("Claim ERC1155 - Test", function () {
 		const NFT_ID = [0];
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, NFT_ID);
 
-		await expect(erc1155ClaimerInstance.setBatchSimpleClaimEntries(0, users, amountsClaimable)).to.be.rejectedWith(
+		// Reverts because the arrays don't have the same lenght
+		await expect(erc1155ClaimerInstance.setBatchSimpleClaimEntries(0, users, amountsClaimable)).to.be.revertedWith(
 			"Claimers and amounts don't have the same length"
+		);
+
+		// Reverts because user One doesn't have the MANAGER_ROLE role granted
+		await expect(erc1155ClaimerInstance.connect(userOne).setBatchSimpleClaimEntries(0, users, [10, 20])).to.be.reverted;
+
+		// Reverts because can't add the whitelist to claim to 0 users as parameter
+		await expect(erc1155ClaimerInstance.setBatchSimpleClaimEntries(0, [], [10, 20])).to.be.revertedWith(
+			"Can't have an empty claimers list"
+		);
+
+		// Reverts because the event is not active (and not existing)
+		await expect(erc1155ClaimerInstance.setBatchSimpleClaimEntries(1, users, amountsClaimable)).to.be.revertedWith(
+			"This claim event is not active"
 		);
 	});
 
@@ -256,6 +273,11 @@ describe("Claim ERC1155 - Test", function () {
 		const NFT_ID = [0];
 		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, NFT_ID);
 
+		// Reverts because can't allow to claim 0 NFT copies
+		await expect(erc1155ClaimerInstance.setRandomClaimEntry(0, userOne.address, 0)).to.be.revertedWith(
+			"Can't let claim 0 NFT copies"
+		);
+
 		await expect(erc1155ClaimerInstance.setRandomClaimEntry(0, userOne.address, 10)).to.not.be.reverted;
 	});
 
@@ -269,6 +291,20 @@ describe("Claim ERC1155 - Test", function () {
 
 		const users = [userOne.address, userTwo.address];
 		const amountsClaimable = [10, 0];
+
+		// Reverts because the user One has not the MANAGER_ROLE role granted
+		await expect(erc1155ClaimerInstance.connect(userOne).setBatchRandomClaimEntries(0, users, amountsClaimable)).to.be
+			.reverted;
+
+		// Reverts because can't add the whitelist to claim to 0 users as parameter
+		await expect(erc1155ClaimerInstance.setBatchRandomClaimEntries(0, [], [10, 20])).to.be.revertedWith(
+			"Can't have an empty claimers list"
+		);
+
+		// Reverts because the event is not active (and not existing)
+		await expect(erc1155ClaimerInstance.setBatchRandomClaimEntries(1, users, amountsClaimable)).to.be.revertedWith(
+			"This claim event is not active"
+		);
 
 		await expect(erc1155ClaimerInstance.setBatchRandomClaimEntries(0, users, amountsClaimable)).to.be.revertedWith(
 			"Can't let claim 0 NFT copies"
@@ -345,13 +381,19 @@ describe("Claim ERC1155 - Test", function () {
 	 * --------------------------------------------------------------------
 	 */
 
-	it("Should allow a wallet WITH the MANAGER_ROLE role to disable an exisiting Simple Claim event", async function () {
+	it("Should allow a wallet WITH the MANAGER_ROLE role to disable an existing claim event", async function () {
 		const { erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
 
 		const SIMPLE_CLAIM_EVENT_TYPE = 0; // enum in the smart contract
+		const RANDOM_CLAIM_EVENT_TYPE = 1; // enum in the smart contract
 		const EVENT_ID = 0;
+
+		// Create and disable Simple claim event
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, 0);
 		await expect(erc1155ClaimerInstance.disableClaimEvent(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID)).to.not.be.reverted;
+
+		// Create and disable Random claim event
+		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [0, 1, 2]);
 	});
 
 	it("Should remove a Simple Claim event from the active list once is it disabled", async function () {
@@ -372,6 +414,11 @@ describe("Claim ERC1155 - Test", function () {
 		const RANDOM_CLAIM_EVENT_TYPE = 1; // enum in the smart contract
 		const EVENT_ID = 0;
 		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [0, 1, 2]);
+
+		await expect(erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [])).to.be.revertedWith(
+			"Can't create an empty claimable set"
+		);
+
 		const activeEvents = await erc1155ClaimerInstance.getRandomClaimEventsActive();
 		await erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, EVENT_ID);
 		const currentActiveEvents = await erc1155ClaimerInstance.getRandomClaimEventsActive();
@@ -592,14 +639,57 @@ describe("Claim ERC1155 - Test", function () {
 			[userOne.address, userOne.address, userOne.address, userOne.address],
 			NFT_IDS
 		);
-		//console.log("currentContractBalances", currentContractBalances);
-		//console.log("currentUserBalances", currentUserBalances);
-
 		var claimedNfts = 0;
 		for (let i = 0; i < currentUserBalances.length; i++) {
 			claimedNfts += currentUserBalances[i].toNumber();
 		}
 		expect(claimedNfts).to.equal(maxClaimableAmount);
+	});
+
+	it("Should NOT allow a user WITHOUT the NFTS_OPERATOR_ROLE role to send an NFT to the claimer contract", async function () {
+		const { userOne, erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
+
+		await simpleErc1155Instante.mint(userOne.address, 0, 10, "0x00");
+		await expect(
+			simpleErc1155Instante.mintBatch(erc1155ClaimerInstance.address, [2, 3, 4, 5], [12, 12, 12, 12], "0x00")
+		).to.be.reverted;
+		await expect(
+			simpleErc1155Instante
+				.connect(userOne)
+				.safeBatchTransferFrom(userOne.address, erc1155ClaimerInstance.address, [0], [1], "0x00")
+		).to.be.revertedWith("The contract can't receive NFTs from this operator");
+	});
+
+	const RANDOM_CLAIM_EVENT_TYPE = 1; // enum in the smart contract
+	const SIMPLE_CLAIM_EVENT_TYPE = 0; // enum in the smart contract
+
+	it("Should allow to remove an active Simple claim event", async function () {
+		const { erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
+
+		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID);
+		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID);
+		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID);
+
+		await erc1155ClaimerInstance.disableClaimEvent(SIMPLE_CLAIM_EVENT_TYPE, 0);
+		await expect(erc1155ClaimerInstance.disableClaimEvent(SIMPLE_CLAIM_EVENT_TYPE, 4)).to.be.revertedWith(
+			"Simple Claim event not in the active list"
+		);
+	});
+
+	it("Should allow to remove an active Random claim event", async function () {
+		const { erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
+
+		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [BACKPACK_ID]);
+		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [BACKPACK_ID]);
+		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [BACKPACK_ID]);
+
+		const simpleClaimEventsActive = await erc1155ClaimerInstance.getRandomClaimEventsActive();
+		console.log(simpleClaimEventsActive);
+
+		await erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, 0);
+		await expect(erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, 4)).to.be.revertedWith(
+			"Random Claim event not in the active list"
+		);
 	});
 });
 

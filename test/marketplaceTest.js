@@ -9,11 +9,12 @@ describe("Snow token tracker and marketplace - Test", function () {
 	const MANAGER_ROLE = "0x241ecf16d79d0f8dbfb92cbc07fe17840425976cf0667f022fe9877caa831b08";
 	const SPENDER_ROLE = "0x7434c6f201a551bfd17336985361933e0c4935b520dac8a49d937b325f7d5c0a";
 	const ORDERS_MANAGER_ROLE = "0xaa5fbceb487d55b340de6be38039a291fbf696e3c434bf175637eaf8d5acd429";
+	const PAUSER_ROLE = "0x65d7a28e3265b37a6474929f336521b332c1681b933f6cb9f3376673440d862a";
 	const ZERO_ADDRESS = ethers.constants.AddressZero;
 
 	async function deployContractsFixture() {
 		// Define process actors
-		const [deployer, userOne, userTwo] = await ethers.getSigners();
+		const [deployer, userOne, userTwo, userThree] = await ethers.getSigners();
 
 		// Deploy the SnowTracker contract
 		const SnowTracker = await ethers.getContractFactory("SnowTracker");
@@ -39,6 +40,7 @@ describe("Snow token tracker and marketplace - Test", function () {
 			deployer,
 			userOne,
 			userTwo,
+			userThree,
 			snowTracker,
 			marketplace,
 			simple721,
@@ -46,13 +48,74 @@ describe("Snow token tracker and marketplace - Test", function () {
 		};
 	}
 
+	it("Should allow a wallet with the PAUSER_ROLE role to pause and unpause the Snow Tracker", async function () {
+		const { deployer, userOne, snowTracker } = await loadFixture(deployContractsFixture);
+
+		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
+		await expect(snowTracker.pause()).to.not.be.reverted;
+		await expect(snowTracker.connect(userOne).unpause()).to.be.reverted;
+		await expect(snowTracker.unpause()).to.not.be.reverted;
+		await expect(snowTracker.connect(userOne).pause()).to.be.reverted;
+	});
+
 	it("Should allow to add tokens to a specified wallet", async function () {
-		const { snowTracker, userOne } = await loadFixture(deployContractsFixture);
+		const { snowTracker, deployer, userOne, userThree } = await loadFixture(deployContractsFixture);
 
 		const tokensToAdd = 10;
 		const initialBalance = await snowTracker.balances(userOne.address);
 		await snowTracker.addTokens(userOne.address, tokensToAdd);
+
+		// Reverts because more than 0 tokens needs to be added
+		await expect(snowTracker.addTokens(userOne.address, 0)).to.be.revertedWith("Can't add zero tokens");
+
+		// Increases the number of unique holders by 1
+		await snowTracker.addTokens(userThree.address, 1);
+		await snowTracker.addTokens(userThree.address, 1);
+
 		expect(await snowTracker.balances(userOne.address)).to.be.equal(parseInt(initialBalance) + tokensToAdd);
+
+		// Reverts if the contract is paused
+		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
+		await snowTracker.pause();
+		await expect(snowTracker.addTokens(userThree.address, 1)).to.be.reverted;
+	});
+
+	it("Should allow to bacth add tokens", async function () {
+		const { snowTracker, deployer, userOne, userTwo } = await loadFixture(deployContractsFixture);
+
+		const TOKENS_TO_ADD_PER_WALLET = 10;
+
+		await snowTracker.batchAddTokens(
+			[userOne.address, userTwo.address],
+			[TOKENS_TO_ADD_PER_WALLET, TOKENS_TO_ADD_PER_WALLET]
+		);
+
+		// Reverts because the userOne has not the MANAGER_ROLE granted
+		await expect(
+			snowTracker
+				.connect(userOne)
+				.batchAddTokens([userOne.address, userTwo.address], [TOKENS_TO_ADD_PER_WALLET, TOKENS_TO_ADD_PER_WALLET])
+		).to.be.reverted;
+
+		// Reverts because can't add tokens to 0 wallets
+		await expect(
+			snowTracker.batchAddTokens([], [TOKENS_TO_ADD_PER_WALLET, TOKENS_TO_ADD_PER_WALLET])
+		).to.be.revertedWith("Can't add tokens to 0 addresses");
+
+		// Reverts because the parameters lengths don't match
+		await expect(
+			snowTracker.batchAddTokens([userOne.address], [TOKENS_TO_ADD_PER_WALLET, TOKENS_TO_ADD_PER_WALLET])
+		).to.be.revertedWith("Parameters lengths are not equal, check the provided values");
+
+		// Reverts because the contract is paused
+		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
+		await snowTracker.pause();
+		await expect(
+			snowTracker.batchAddTokens(
+				[userOne.address, userTwo.address],
+				[TOKENS_TO_ADD_PER_WALLET, TOKENS_TO_ADD_PER_WALLET]
+			)
+		).to.be.reverted;
 	});
 
 	it("Should allow the contract deployer to pause and unpause the SnowTracker contract", async function () {
@@ -78,7 +141,7 @@ describe("Snow token tracker and marketplace - Test", function () {
 	});
 
 	it("Should allow to remove tokens from a specified wallet", async function () {
-		const { snowTracker, userOne } = await loadFixture(deployContractsFixture);
+		const { deployer, snowTracker, userOne } = await loadFixture(deployContractsFixture);
 
 		const tokensToAdd = 10;
 		const tokensToRemove = 7;
@@ -88,10 +151,14 @@ describe("Snow token tracker and marketplace - Test", function () {
 		expect(await snowTracker.balances(userOne.address)).to.be.equal(
 			parseInt(initialBalance) + tokensToAdd - tokensToRemove
 		);
+
+		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
+		await snowTracker.pause();
+		await expect(snowTracker.removeTokens(userOne.address, tokensToAdd - tokensToRemove)).to.be.reverted;
 	});
 
 	it("Should allow to batch remove tokens to a list of wallets", async function () {
-		const { snowTracker, userOne, userTwo } = await loadFixture(deployContractsFixture);
+		const { snowTracker, deployer, userOne, userTwo } = await loadFixture(deployContractsFixture);
 
 		const tokensToAdd = [10, 20];
 		const tokensToRemove = [6, 2];
@@ -111,10 +178,29 @@ describe("Snow token tracker and marketplace - Test", function () {
 		);
 
 		expect(parseInt(result)).to.equal(totalRemoved);
+
+		// Reverts because can't remove tokens to 0 wallets
+		await expect(snowTracker.batchRemoveTokens([], tokensToRemove)).to.be.revertedWith(
+			"Can't remove tokens from 0 addresses"
+		);
+
+		// Reverts because the parameters lengths don't match
+		await expect(snowTracker.batchRemoveTokens([userOne.address], tokensToRemove)).to.be.revertedWith(
+			"Parameters lengths are not equal, check the provided values"
+		);
+
+		// Reverts because the userOne has not the MANAGER_ROLE granted
+		await expect(snowTracker.connect(userOne).batchRemoveTokens([userOne.address, userTwo.address], tokensToRemove)).to
+			.be.reverted;
+
+		// Reverts because the contract is paused
+		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
+		await snowTracker.pause();
+		await expect(snowTracker.batchRemoveTokens([userOne.address, userTwo.address], tokensToRemove)).to.be.reverted;
 	});
 
 	it("Should allow to transfer tokens between 2 wallets", async function () {
-		const { snowTracker, userOne, userTwo } = await loadFixture(deployContractsFixture);
+		const { snowTracker, deployer, userOne, userTwo } = await loadFixture(deployContractsFixture);
 
 		const tokensToAdd = 100;
 		const tokensToTransfer = 23;
@@ -124,6 +210,11 @@ describe("Snow token tracker and marketplace - Test", function () {
 		await snowTracker.connect(userOne).transferTokens(userTwo.address, tokensToTransfer);
 		expect(await snowTracker.balances(userOne.address)).to.be.equal(parseInt(initialUserOneBalance) - tokensToTransfer);
 		expect(await snowTracker.balances(userTwo.address)).to.be.equal(parseInt(initialUserTwoBalance) + tokensToTransfer);
+
+		// Reverts because the contract is paused
+		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
+		await snowTracker.pause();
+		await expect(snowTracker.connect(userOne).transferTokens(userTwo.address, tokensToTransfer)).to.be.reverted;
 	});
 
 	it("Should revert with a custom error when trying to remove more tokens than the available balance", async function () {
@@ -178,12 +269,32 @@ describe("Snow token tracker and marketplace - Test", function () {
 	});
 
 	it("Should not revert if a wallet with the role SPENDER_ROLE tries to spend tokens of another wallet address", async function () {
-		const { snowTracker, userOne } = await loadFixture(deployContractsFixture);
+		const { snowTracker, deployer, userOne, userTwo } = await loadFixture(deployContractsFixture);
 
 		const tokenToSpend = 100;
-		await snowTracker.addTokens(userOne.address, tokenToSpend);
+		const TOKENS_TO_ADD = 200;
+		await snowTracker.addTokens(userOne.address, TOKENS_TO_ADD);
 		await snowTracker.grantRole(SPENDER_ROLE, userOne.address);
 		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, tokenToSpend)).to.not.be.reverted;
+
+		// Increase and decrease by 1 the unique holders
+		await snowTracker.addTokens(userTwo.address, TOKENS_TO_ADD);
+		await snowTracker.connect(userOne).spendTokens(userTwo.address, TOKENS_TO_ADD);
+
+		// Revers because can't spend 0 tokens
+		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, 0)).to.be.revertedWith(
+			"Can't spend zero tokens"
+		);
+
+		// Revers because can't spend more than the current token balance
+		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, TOKENS_TO_ADD + 1)).to.be.revertedWith(
+			"Can't spend more than the current balance"
+		);
+
+		// Reverts because the contract is paused
+		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
+		await snowTracker.pause();
+		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, tokenToSpend)).to.be.reverted;
 	});
 
 	it("Should track the total amount of unique token holders", async function () {
@@ -295,6 +406,13 @@ describe("Snow token tracker and marketplace - Test", function () {
 		// Check marketplace NFT presence
 		const currentNftsBalance = await simple1155.balanceOf(marketplace.address, tokenId);
 		expect(currentNftsBalance).to.equal(initialNftsBalance + 1);
+	});
+
+	it("Should allow the contract owner to mint and should not allow other wallets", async function () {
+		const { deployer, userOne, simple721 } = await loadFixture(deployContractsFixture);
+
+		await expect(simple721.safeMint(deployer.address)).to.not.be.reverted;
+		await expect(simple721.connect(userOne).safeMint(userOne.address)).to.be.reverted;
 	});
 
 	it("Should NOT allow a wallet address WITHOUT the ORDERS_MANAGER_ROLE role to send ERC1155 tokens to the marketplace contract", async function () {
