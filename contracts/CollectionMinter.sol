@@ -15,7 +15,7 @@ pragma solidity ^0.8.19;
 import "./Erc721Collection.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
@@ -60,6 +60,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  *
  */
 contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
     // Access Control roles
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
@@ -421,7 +423,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             emit FundsWithdrawn(fundsReceiver, address(this).balance);
         } else {
             // Withdraw all the available amount of a specific ERC20 currency
-            ERC20 tokenInstance = ERC20(erc20TokenAddress);
+            IERC20 tokenInstance = IERC20(erc20TokenAddress);
             uint256 contractBalance = tokenInstance.balanceOf(address(this));
             require(contractBalance > 0, "Cannot withdraw 0 tokens");
             bool sent = tokenInstance.transfer(fundsReceiver, contractBalance);
@@ -445,7 +447,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         private
     {
         address buyer = _msgSender();
-        ERC20 tokenInstance = ERC20(paymentToken);
+        IERC20 tokenInstance = IERC20(paymentToken);
         require(
             tokenInstance.balanceOf(buyer) >= mintPrice,
             "Insufficient funds to mint."
