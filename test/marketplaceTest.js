@@ -365,6 +365,11 @@ describe("Snow token tracker and marketplace - Test", function () {
 		await expect(marketplace.createOrder(freePrice, ERC1155_NFT_TYPE, simple1155.address, tokenId)).to.be.revertedWith(
 			"Can't create a free order"
 		);
+
+		// Reverts because the user balance of tokens to sell is insufficient
+		await expect(
+			marketplace.createOrder(freePrice, ERC1155_NFT_TYPE, simple1155.address, tokenId + 1)
+		).to.be.revertedWith("No tokens available to create the order");
 	});
 
 	it("Should allow a wallet address WITH the ORDERS_MANAGER_ROLE role to create a valid MarketOrder for an ERC1155 token", async function () {
@@ -620,6 +625,41 @@ describe("Snow token tracker and marketplace - Test", function () {
 		expect(wrongElements).to.equal(0);
 	});
 
+	it("Should emit the correct errors when trying to create a new order with incorrect requirements", async function () {
+		const { deployer, userOne, marketplace, simple1155 } = await loadFixture(deployContractsFixture);
+
+		// Mint to deployer wallet ERC1155 tokens
+		const tokenId = 1234;
+		const amount = 9;
+		const toMint = 20;
+		const ERC1155_NFT_TYPE = 0;
+		const orderPrice = 10;
+		await simple1155.mint(deployer.address, tokenId, toMint, "0x00");
+		await marketplace.grantRole(ORDERS_MANAGER_ROLE, deployer.address);
+
+		// Approve the tokens spending from the marketplace side
+		await simple1155.setApprovalForAll(marketplace.address, true);
+
+		// Create orders
+		const orderIds = bigArrayToArray(
+			await marketplace.callStatic.createBatchERC1155Order(orderPrice, simple1155.address, tokenId, amount)
+		);
+
+		// Reverts becasue user One doesn't have the ORDERS_MANAGER_ROLE role granted
+		await expect(marketplace.connect(userOne).createBatchERC1155Order(orderPrice, simple1155.address, tokenId, amount))
+			.to.be.reverted;
+
+		// Reverts because the amount of orders to create is less than 2
+		await expect(marketplace.createBatchERC1155Order(orderPrice, simple1155.address, tokenId, 1)).to.be.revertedWith(
+			"Can't create a batch order with less than 2 NFT copies"
+		);
+
+		// Reverts because the marketplace is not enabled
+		await marketplace.grantRole(PAUSER_ROLE, deployer.address);
+		await marketplace.pauseMarketplace();
+		await expect(marketplace.createBatchERC1155Order(orderPrice, simple1155.address, tokenId, amount)).to.be.reverted;
+	});
+
 	describe("Marketplace not empty testing", function () {
 		async function createErc721OrderFixture() {
 			const { deployer, userOne, userTwo, snowTracker, marketplace, simple721, simple1155 } = await loadFixture(
@@ -734,6 +774,11 @@ describe("Snow token tracker and marketplace - Test", function () {
 			// Fulfill market order
 			await marketplace.connect(userOne).fulfillOrder(orderId);
 
+			// Reverts because the order is no longer active
+			await expect(marketplace.connect(userOne).fulfillOrder(orderId)).to.be.revertedWith(
+				"The order is not active anymore"
+			);
+
 			const currenUserOneBalance = await snowTracker.balances(userOne.address);
 			expect(currenUserOneBalance).to.equal(initialUserOneBalance.toNumber() - orderDetails.price.toNumber());
 
@@ -832,6 +877,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 			// Pause marketplace
 			await marketplace.pauseMarketplace();
 
+			// Reverts becasue the user One doesn't have the PAUSER_ROLE granted
+			await expect(marketplace.connect(userOne).pauseMarketplace()).to.be.reverted;
+
 			// Fulfill market order
 			await expect(marketplace.connect(userOne).fulfillOrder(orderId)).to.be.revertedWith("Marketplace not active");
 		});
@@ -856,6 +904,11 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 			// Pause marketplace
 			await marketplace.pauseMarketplace();
+
+			// Reverts becasue the user One doesn't have the PAUSER_ROLE granted
+			await expect(marketplace.connect(userOne).unpauseMarketplace()).to.be.reverted;
+
+			// Unpause marketplace
 			await marketplace.unpauseMarketplace();
 
 			// Fulfill market order
@@ -901,6 +954,11 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 			// Cancel market order
 			await marketplace.cancelOrder(orderId);
+
+			// Reverts because the order has been already cancelled
+			await expect(marketplace.cancelOrder(orderId)).to.be.revertedWith(
+				"The order to remove is not in the active list"
+			);
 
 			const currenErc721OnSale = await marketplace.onSaleErc721Tokens();
 			expect(currenErc721OnSale).to.equal(initialErc721OnSale.toNumber() - 1);
