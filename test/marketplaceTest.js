@@ -12,6 +12,8 @@ describe("Snow token tracker and marketplace - Test", function () {
 	const PAUSER_ROLE = "0x65d7a28e3265b37a6474929f336521b332c1681b933f6cb9f3376673440d862a";
 	const ZERO_ADDRESS = ethers.constants.AddressZero;
 
+	const MAX_ACTIVE_ORDERS_AMOUNT = 10;
+
 	async function deployContractsFixture() {
 		// Define process actors
 		const [deployer, userOne, userTwo, userThree] = await ethers.getSigners();
@@ -23,7 +25,7 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 		// Deploy the Marketplace contract
 		const Marketplace = await ethers.getContractFactory("SnowMarketplace");
-		const marketplace = await Marketplace.deploy(snowTracker.address);
+		const marketplace = await Marketplace.deploy(snowTracker.address, MAX_ACTIVE_ORDERS_AMOUNT);
 		await marketplace.deployed();
 
 		// Deploy a simple ERC721 token to test the marketplace
@@ -553,14 +555,13 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 		// Mint to deployer wallet ERC1155 tokens
 		const tokenId = 1234;
-		const amount = 100;
+		const amount = 9;
+		const toMint = 20;
 		const ERC1155_NFT_TYPE = 0;
 		const CANCELED_ORDER_STATE = 2;
 		const orderPrice = 10;
-		await simple1155.mint(deployer.address, tokenId, amount, "0x00");
+		await simple1155.mint(deployer.address, tokenId, toMint, "0x00");
 		await marketplace.grantRole(ORDERS_MANAGER_ROLE, deployer.address);
-
-		const initialNftsBalance = await simple1155.balanceOf(marketplace.address, tokenId);
 
 		// Approve the tokens spending from the marketplace side
 		await simple1155.setApprovalForAll(marketplace.address, true);
@@ -574,6 +575,11 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 		// Check the number of ERC1155 NFT copies put on sale
 		expect(currentNftsBalance).to.equal(amount);
+
+		// Reverts because the limit of concurrent active orders has been reached
+		await expect(marketplace.createBatchERC1155Order(orderPrice, simple1155.address, tokenId, 2)).to.be.revertedWith(
+			"Max concurrent active orders limit reached!"
+		);
 
 		var deletedOrders = [];
 		for (let i = 0; i < orderIds.length; i++) {

@@ -78,6 +78,9 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  * case when a claim event is still running).
  *
  * - Claim events don't have an expiration block (a claim event can run forever).
+ *
+ * - A number of maximum concurrent claim events per type is set up at contract
+ * deployment time. This number is the same for both Simple and Random claim events.
  */
 contract Erc1155Claimer is
     Pausable,
@@ -93,6 +96,11 @@ contract Erc1155Claimer is
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
     bytes32 public constant NFTS_OPERATOR_ROLE =
         keccak256("NFTS_OPERATOR_ROLE");
+
+    //------------------------------------------------------------------//
+    //---------------------- Contract immutables -----------------------//
+    //------------------------------------------------------------------//
+    uint256 public immutable maxActiveClaimEventsPerType; // Max concurrent active claim events per type
 
     //------------------------------------------------------------------//
     //---------------------- Contract events ---------------------------//
@@ -174,10 +182,20 @@ contract Erc1155Claimer is
     //------------------------------------------------------------------//
     //---------------------- Simple constructor ------------------------//
     //------------------------------------------------------------------//
-    constructor() {
+
+    /**
+     * @dev Contract constructor
+     *
+     * @param _maxActiveClaimEventsPerType number of max concurrent claim
+     * active events per type.
+     */
+    constructor(uint256 _maxActiveClaimEventsPerType) {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
+
+        // Initialize immutables
+        maxActiveClaimEventsPerType = _maxActiveClaimEventsPerType;
     }
 
     //------------------------------------------------------------------//
@@ -398,6 +416,12 @@ contract Erc1155Claimer is
         external
         onlyRole(MANAGER_ROLE)
     {
+        // Check if the the maximum amount of active Simple claim events is reached
+        require(
+            _simpleClaimEventsActive.length < maxActiveClaimEventsPerType,
+            "Can't create a new claim. Max amount of concurrent active Simple claim events reached!"
+        );
+
         uint256 currentEventId = _simpleClaimCounter++;
 
         SimpleClaimEvent memory newClaimEvent = SimpleClaimEvent(
@@ -408,6 +432,7 @@ contract Erc1155Claimer is
         );
         // Add event details
         simpleClaimEventDetails[currentEventId] = newClaimEvent;
+
         // Add event to active list
         _simpleClaimEventsActive.push(currentEventId);
 
@@ -432,6 +457,12 @@ contract Erc1155Claimer is
         address contractAddress,
         uint256[] memory tokenIds
     ) external onlyRole(MANAGER_ROLE) {
+        // Check if the the maximum amount of active Random claim events is reached
+        require(
+            _randomClaimEventsActive.length < maxActiveClaimEventsPerType,
+            "Can't create a new claim. Max amount of concurrent active Random claim events reached!"
+        );
+
         uint256 currentEventId = _randomClaimCounter++;
 
         require(tokenIds.length > 0, "Can't create an empty claimable set");

@@ -14,6 +14,7 @@ describe("Claim ERC1155 - Test", function () {
 	const BACKPACKS_AMOUNT = 100;
 	const AVATAR_ID = 1;
 	const AVATARS_AMOUNT = 30;
+	const MAX_CONCURRENT_EVENTS_PER_TYPE = 50;
 
 	async function deployContractsFixture() {
 		// Define process actors
@@ -21,7 +22,7 @@ describe("Claim ERC1155 - Test", function () {
 
 		// Deploy the Claimer contract
 		const Erc1155Claimer = await ethers.getContractFactory("Erc1155Claimer");
-		const erc1155ClaimerInstance = await Erc1155Claimer.deploy();
+		const erc1155ClaimerInstance = await Erc1155Claimer.deploy(MAX_CONCURRENT_EVENTS_PER_TYPE);
 		await erc1155ClaimerInstance.deployed();
 
 		// Deploy the Erc1155 contract
@@ -133,7 +134,7 @@ describe("Claim ERC1155 - Test", function () {
 		).to.be.reverted;
 	});
 
-	it("Should not let a wallet WITH the MANAGER_ROLE role to create a new Simple Claim event", async function () {
+	it("Should let a wallet WITH the MANAGER_ROLE role to create a new Simple Claim event", async function () {
 		const { userOne, erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
 
 		await erc1155ClaimerInstance.grantRole(MANAGER_ROLE, userOne.address);
@@ -141,6 +142,14 @@ describe("Claim ERC1155 - Test", function () {
 		await expect(
 			erc1155ClaimerInstance.connect(userOne).createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID)
 		).to.not.be.reverted;
+
+		for (let i = 0; i < 49; i++) {
+			await erc1155ClaimerInstance.connect(userOne).createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID);
+		}
+
+		await expect(
+			erc1155ClaimerInstance.connect(userOne).createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID)
+		).to.be.reverted;
 	});
 
 	it("Should not let a wallet WITHOUT the MANAGER_ROLE role to create a new Random Claim event", async function () {
@@ -153,7 +162,7 @@ describe("Claim ERC1155 - Test", function () {
 		).to.be.reverted;
 	});
 
-	it("Should not let a wallet WITH the MANAGER_ROLE role to create a new Random Claim event", async function () {
+	it("Should let a wallet WITH the MANAGER_ROLE role to create a new Random Claim event", async function () {
 		const { userOne, erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
 
 		const randomTokenIds = [1, 2, 0, 5, 32, 51];
@@ -163,6 +172,16 @@ describe("Claim ERC1155 - Test", function () {
 		await expect(
 			erc1155ClaimerInstance.connect(userOne).createRandomClaimEvent(simpleErc1155Instante.address, randomTokenIds)
 		).to.not.be.reverted;
+
+		for (let i = 0; i < 49; i++) {
+			await erc1155ClaimerInstance
+				.connect(userOne)
+				.createRandomClaimEvent(simpleErc1155Instante.address, randomTokenIds);
+		}
+
+		await expect(
+			erc1155ClaimerInstance.connect(userOne).createRandomClaimEvent(simpleErc1155Instante.address, randomTokenIds)
+		).to.be.reverted;
 	});
 
 	/**

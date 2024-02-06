@@ -47,6 +47,7 @@ import "./SnowTracker.sol";
  * 7. Number of the ERC1155 tokens currently on sale
  * 8. SNOW soft-token contract address
  * 9. Trading active (marketplace paused/unpaused)
+ * 10. Max number of concurrent active orders
  *
  */
 contract SnowMarketplace is AccessControl {
@@ -59,6 +60,11 @@ contract SnowMarketplace is AccessControl {
     bytes32 public constant ORDERS_MANAGER_ROLE =
         keccak256("ORDERS_MANAGER_ROLE");
     uint256 public constant INVALID_BLOCK = 0;
+
+    //------------------------------------------------------------------//
+    //---------------------- Contract immutables -----------------------//
+    //------------------------------------------------------------------//
+    uint256 public immutable maxActiveOrdesAmount; // Max concurrent active marketplace orders
 
     //------------------------------------------------------------------//
     //---------------------- Marketplace events ------------------------//
@@ -135,9 +141,10 @@ contract SnowMarketplace is AccessControl {
      * @dev Contract constructor
      *
      * @param snowTokenContract address of the smart contract that
+     * @param _maxActiveOrdesAmount max number of concurrent active orders in the marketplace
      * keeps track of the soft-token balances
      */
-    constructor(address snowTokenContract) {
+    constructor(address snowTokenContract, uint256 _maxActiveOrdesAmount) {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
@@ -151,6 +158,8 @@ contract SnowMarketplace is AccessControl {
         snowSoftTokenAddress = snowTokenContract; // Assumed to be valid
 
         isMarketplaceActive = true; // enable marketplace usage
+
+        maxActiveOrdesAmount = _maxActiveOrdesAmount; // Set the limit to the max active orders amount
     }
 
     //------------------------------------------------------------------//
@@ -213,6 +222,11 @@ contract SnowMarketplace is AccessControl {
         marketplaceEnabled
         returns (uint256)
     {
+        // Check if the max active orders limit has been reached
+        require(
+            activeOrders.length < maxActiveOrdesAmount,
+            "Max concurrent active orders limit reached!"
+        );
         // Check sender NFTs balance to create the order
         if (nftType == NftType.ERC1155) {
             ERC1155 tokenInstance = ERC1155(contractAddress);
