@@ -457,10 +457,8 @@ contract SnowMarketplace is AccessControl {
             // Update counter
             if (from == address(this) && to != address(this)) {
                 onSaleErc721Tokens -= 1;
-            } else if (from != address(this) && to == address(this)) {
-                onSaleErc721Tokens += 1;
             } else {
-                revert("Trying to send the NFT between 2 simple addresses");
+                onSaleErc721Tokens += 1;
             }
             // Transfer NFT
             ERC721 collectionInstance = ERC721(contractAddress);
@@ -470,10 +468,8 @@ contract SnowMarketplace is AccessControl {
             // Update counter
             if (from == address(this) && to != address(this)) {
                 onSaleErc1155Tokens -= 1;
-            } else if (from != address(this) && to == address(this)) {
-                onSaleErc1155Tokens += 1;
             } else {
-                revert("Trying to send the NFT between 2 simple addresses");
+                onSaleErc1155Tokens += 1;
             }
             // Transfer back NFT
             ERC1155 tokenInstance = ERC1155(contractAddress);

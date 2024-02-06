@@ -351,6 +351,41 @@ describe("Snow token tracker and marketplace - Test", function () {
 		await expect(marketplace.createOrder(0, ERC1155_NFT_TYPE, simple1155.address, tokenId)).to.be.reverted;
 	});
 
+	it("Should allow to update the Snow contract reference", async function () {
+		const { deployer, marketplace, userOne } = await loadFixture(deployContractsFixture);
+
+		await marketplace.grantRole(ORDERS_MANAGER_ROLE, deployer.address);
+
+		// Should allow to change the Snow contract reference
+		await expect(marketplace.updateSnowTokenContract(userOne.address)).to.not.be.reverted;
+
+		// Reverts because the user One doesn't have the MANAGER_ROLE granted
+		await expect(marketplace.connect(userOne).updateSnowTokenContract(userOne.address)).to.be.reverted;
+
+		// Reverts because the zero address can't be set as the new reference
+		await expect(marketplace.updateSnowTokenContract(ZERO_ADDRESS)).to.be.revertedWith(
+			"Please insert a valid contract address"
+		);
+	});
+
+	it("Should allow to receive in batch ERC1155 tokens", async function () {
+		const { deployer, marketplace, userOne, simple1155 } = await loadFixture(deployContractsFixture);
+
+		await marketplace.grantRole(ORDERS_MANAGER_ROLE, deployer.address);
+
+		// Should allow to change the Snow contract reference
+		await expect(simple1155.mintBatch(marketplace.address, [0, 1, 2], [10, 10, 10], "0x00")).to.be.revertedWith(
+			"The contract can't receive NFTs from this address"
+		);
+
+		// Doesn't revert becasue the Erc1155 collection has the ORDERS_MANAGER_ROLE role granted
+		await marketplace.grantRole(ORDERS_MANAGER_ROLE, userOne.address);
+		await simple1155.connect(userOne).mintBatch(userOne.address, [0, 1, 2], [10, 10, 10], "0x00");
+		await simple1155
+			.connect(userOne)
+			.safeBatchTransferFrom(userOne.address, marketplace.address, [0, 1, 2], [10, 10, 10], "0x00");
+	});
+
 	it("Should NOT allow a wallet address WITH the ORDERS_MANAGER_ROLE role to create a free MarketOrder (price = 0 SNOW tokens)", async function () {
 		const { deployer, marketplace, simple1155 } = await loadFixture(deployContractsFixture);
 
