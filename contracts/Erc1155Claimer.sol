@@ -792,10 +792,8 @@ contract Erc1155Claimer is
             index = index + 1;
         }
 
-        uint256 totalClaimable = 0;
         uint256 totalClaimed = 0;
         for (uint256 i = 0; i < availableAmounts.length; i++) {
-            totalClaimable = totalClaimable + availableAmounts[i];
             totalClaimed = totalClaimed + nftsToClaim[i];
         }
 
@@ -894,13 +892,9 @@ contract Erc1155Claimer is
         }
 
         // Debug
-        uint256 finalAvailableAmount = 0;
         uint256 finalDistributedAmount = 0;
         for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
             finalDistributedAmount = finalDistributedAmount + nftsToClaim[i];
-            finalAvailableAmount =
-                finalAvailableAmount +
-                currentAvailableAmounts[i];
         }
 
         require(
