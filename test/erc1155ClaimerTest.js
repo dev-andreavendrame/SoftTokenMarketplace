@@ -535,6 +535,10 @@ describe("Claim ERC1155 - Test", function () {
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, NFT_ID);
 		await erc1155ClaimerInstance.setSimpleClaimEntry(EVENT_ID, userOne.address, claimableAmount);
 		await expect(erc1155ClaimerInstance.connect(userOne).claim(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID)).to.not.be.reverted;
+
+		// Reverts because the contract is paused
+		await erc1155ClaimerInstance.pause();
+		await expect(erc1155ClaimerInstance.connect(userOne).claim(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID)).to.be.reverted;
 	});
 
 	it("Should allow a user to claim ALL the assigned NFT copies in a Simple Claim event if present in the contract", async function () {

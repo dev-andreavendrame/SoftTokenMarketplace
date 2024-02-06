@@ -395,11 +395,10 @@ contract Erc1155Claimer is
         if (claimType == ClaimType.SIMPLE) {
             simpleClaimEventDetails[claimEventId].isActive = false;
             _removeSimpleClaimActiveEvent(claimEventId);
-        } else if (claimType == ClaimType.RANDOM) {
+        } else {
+            // Case ClaimType.RANDOM
             randomClaimEventDetails[claimEventId].isActive = false;
             _removeRandomClaimActiveEvent(claimEventId);
-        } else {
-            revert("No valid 'Claim type provided");
         }
     }
 
@@ -513,12 +512,11 @@ contract Erc1155Claimer is
             uint256 claimed = _simpleClaim(claimId, _msgSender());
             emit SIMPLE_NFTS_CLAIM(_msgSender(), claimId, claimed);
             return claimed;
-        } else if (claimType == ClaimType.RANDOM) {
+        } else {
+            // Case ClaimType.RANDOM
             uint256 claimed = _randomClaim(claimId, _msgSender());
             emit RANDOM_NFTS_CLAIM(_msgSender(), claimId, claimed);
             return claimed;
-        } else {
-            revert("No valid Claim type speficied");
         }
     }
 
