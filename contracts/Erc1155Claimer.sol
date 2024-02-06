@@ -756,8 +756,6 @@ contract Erc1155Claimer is
             // Reset index if max length reached
             index = index % availableAmounts.length;
 
-            require(index < 5 && index >= 0, "Problemi con l'indice");
-
             // Operations
             uint256 randomNumber = (seed % maxRandom) + 1;
             uint256 nftsToAssign = 0;
