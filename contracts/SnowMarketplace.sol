@@ -234,14 +234,12 @@ contract SnowMarketplace is AccessControl {
                 tokenInstance.balanceOf(_msgSender(), tokenId) > 0,
                 "No tokens available to create the order"
             );
-        } else if (nftType == NftType.ERC721) {
+        } else {
             ERC721 collectionInstance = ERC721(contractAddress);
             require(
                 collectionInstance.ownerOf(tokenId) == _msgSender(),
                 "You don't own the token to put on sale"
             );
-        } else {
-            revert("No valid token standard specified");
         }
 
         require(price > 0, "Can't create a free order");
