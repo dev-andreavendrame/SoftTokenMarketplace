@@ -857,9 +857,7 @@ contract Erc1155Claimer is
             initialDistributedAmount =
                 initialDistributedAmount +
                 currentDistribution[i];
-        }
 
-        for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
             fakeAverage = fakeAverage + currentAvailableAmounts[i];
         }
 
