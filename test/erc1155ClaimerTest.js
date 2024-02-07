@@ -30,12 +30,18 @@ describe("Claim ERC1155 - Test", function () {
 		const simpleErc1155Instante = await SimpleErc1155.deploy(deployer.address);
 		await simpleErc1155Instante.deployed();
 
+		// Deploy the Attack contract
+		const Attack = await ethers.getContractFactory("Attack");
+		const attack = await Attack.deploy(erc1155ClaimerInstance.address, simpleErc1155Instante.address, 0);
+		await attack.deployed();
+
 		return {
 			deployer,
 			userOne,
 			userTwo,
 			erc1155ClaimerInstance,
 			simpleErc1155Instante,
+			attack,
 		};
 	}
 
@@ -521,20 +527,28 @@ describe("Claim ERC1155 - Test", function () {
 	});
 
 	it("Should allow a user to claim ALL the NFT copies in the contract if the assigned claimable amount exceed the available amount", async function () {
-		const { deployer, userOne, erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(
+		const { deployer, userOne, attack, erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(
 			deployContractsFixture
 		);
 		const SIMPLE_CLAIM_EVENT_TYPE = 0; // enum in the smart contract
-		const claimableAmount = 5;
-		const NFT_ID = 1;
+		const claimableAmount = 1;
+		const NFT_ID = 0;
 		const EVENT_ID = 0;
 
 		// Mint NFTs to contract
 		await erc1155ClaimerInstance.grantRole(NFTS_OPERATOR_ROLE, deployer.address);
-		await simpleErc1155Instante.mint(erc1155ClaimerInstance.address, NFT_ID, 1, "0x00");
+		await simpleErc1155Instante.mint(erc1155ClaimerInstance.address, NFT_ID, 1000, "0x00");
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, NFT_ID);
+		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, NFT_ID);
+
 		await erc1155ClaimerInstance.setSimpleClaimEntry(EVENT_ID, userOne.address, claimableAmount);
-		await expect(erc1155ClaimerInstance.connect(userOne).claim(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID)).to.not.be.reverted;
+		await expect(erc1155ClaimerInstance.setSimpleClaimEntry(EVENT_ID, attack.address, claimableAmount)).to.not.be
+			.reverted;
+
+		await erc1155ClaimerInstance.setSimpleClaimEntry(EVENT_ID + 1, userOne.address, claimableAmount);
+		await erc1155ClaimerInstance.setSimpleClaimEntry(EVENT_ID + 1, attack.address, claimableAmount);
+
+		await expect(attack.connect(userOne).claim(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID, { value: 1 })).to.be.reverted;
 
 		// Reverts because the contract is paused
 		await erc1155ClaimerInstance.pause();

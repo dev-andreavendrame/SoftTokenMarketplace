@@ -426,8 +426,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             IERC20 tokenInstance = IERC20(erc20TokenAddress);
             uint256 contractBalance = tokenInstance.balanceOf(address(this));
             require(contractBalance > 0, "Cannot withdraw 0 tokens");
-            bool sent = tokenInstance.transfer(fundsReceiver, contractBalance);
-            require(sent, "Error withdrawing funds");
+            tokenInstance.safeTransfer(fundsReceiver, contractBalance);
             emit FundsWithdrawn(fundsReceiver, contractBalance);
         }
     }
