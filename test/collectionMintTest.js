@@ -10,6 +10,7 @@ describe("Collection mint testing", function () {
 	const PAUSER_ROLE = "0x65d7a28e3265b37a6474929f336521b332c1681b933f6cb9f3376673440d862a";
 	const MINTER_ROLE = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6";
 	const URI_EDITOR_ROLE = "0x9c66f910f205d7535152ebffe8ac04c001560c07b4ff8d983d454b2df5e70cf8";
+	const TEAM_MINTER_ROLE = "0xd85a4cf5d37a04dd33dd5be180981c3f745ce2f4ee8a4dbd26e87bff58577023";
 	const ZERO_ADDRESS = ethers.constants.AddressZero;
 
 	const MAX_COLLECTION_SUPPLY = 100;
@@ -352,6 +353,7 @@ describe("Collection mint testing", function () {
 
 		//await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 		await collectionMinter.grantRole(MANAGER_ROLE, deployer.address);
+		await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 		await collectionMinter.enableMint();
 
 		// Reverts becasue the value used to pay the mint is not enough
@@ -390,6 +392,10 @@ describe("Collection mint testing", function () {
 		// Buy a token in a whitelisted sale phase (ID = 5)
 		await collectionMinter.grantWhitelistForSalePhase(5, [userOne.address]);
 		await collectionMinter.connect(userOne).mintTokens(1, 5, { value: 150 });
+
+		// Reverts because the contract is paused
+		await collectionMinter.pause();
+		await expect(collectionMinter.connect(userOne).mintTokens(1, 5, { value: 50 })).to.be.reverted;
 	});
 
 	it("Should allow to pay the mint with ERC20 tokens", async function () {
@@ -428,6 +434,31 @@ describe("Collection mint testing", function () {
 		await erc20.connect(userOne).approve(collectionMinter.address, MINT_PRICE);
 		await expect(collectionMinter.connect(userOne).mintTokens(MAX_MINTED_TOKENS_PER_WALLET, 1, { value: 50 })).to.not.be
 			.reverted;
+	});
+
+	it("Should allow a wallet with the TEAM_MINTER_ROLE role to mint", async function () {
+		const { deployer, userOne, collectionMinter, erc20 } = await loadFixture(deployContractsFixture);
+
+		const MAX_PHASE_LIMIT_SUPPLY = 10;
+		const MAX_MINTED_TOKENS_PER_WALLET = 1;
+		const MINT_PRICE = 100;
+
+		await collectionMinter.grantRole(TEAM_MINTER_ROLE, deployer.address);
+		await collectionMinter.enableMint();
+
+		await collectionMinter.teamMint(5, { value: 250 });
+
+		// Reverts becasue the use One doesn't have the TEAM_MINTER_ROLE role granted
+		await expect(collectionMinter.connect(userOne).teamMint(1, { value: 50 })).to.be.reverted;
+
+		// Reverts because mint leads to exceed max collection supply
+		const tokensToMint = 5000;
+		await expect(collectionMinter.teamMint(tokensToMint, { value: tokensToMint * 50 })).to.be.revertedWith(
+			"Mint will lead to exceed the max collection supply"
+		);
+
+		// Reverts because mint fee is not correct
+		await expect(collectionMinter.teamMint(2, { value: 50 })).to.be.reverted;
 	});
 });
 

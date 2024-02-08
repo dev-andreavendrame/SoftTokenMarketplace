@@ -572,6 +572,40 @@ describe("Claim ERC1155 - Test", function () {
 		await expect(erc1155ClaimerInstance.connect(userOne).claim(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID)).to.not.be.reverted;
 	});
 
+	it("Should NOT allow a user to claim NFTs if the claim conditions are not met", async function () {
+		const { deployer, userOne, erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(
+			deployContractsFixture
+		);
+		const SIMPLE_CLAIM_EVENT_TYPE = 0; // enum in the smart contract
+		const claimableAmount = 100;
+		const NFT_ID = 1;
+		const EVENT_ID = 0;
+
+		// Mint NFTs to contract
+		await erc1155ClaimerInstance.grantRole(NFTS_OPERATOR_ROLE, deployer.address);
+		await simpleErc1155Instante.mint(erc1155ClaimerInstance.address, NFT_ID, 1, "0x00");
+		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, NFT_ID);
+		await erc1155ClaimerInstance.setSimpleClaimEntry(EVENT_ID, userOne.address, claimableAmount);
+
+		// Reverts because the Simple claim event is ended
+		await erc1155ClaimerInstance.disableClaimEvent(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID);
+		await expect(erc1155ClaimerInstance.connect(userOne).claim(SIMPLE_CLAIM_EVENT_TYPE, EVENT_ID)).to.be.revertedWith(
+			"The claim event is ended"
+		);
+
+		const eventTwo = EVENT_ID + 1;
+		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, NFT_ID);
+		await erc1155ClaimerInstance.setSimpleClaimEntry(eventTwo, userOne.address, claimableAmount);
+		await expect(erc1155ClaimerInstance.connect(userOne).claim(SIMPLE_CLAIM_EVENT_TYPE, eventTwo)).to.not.be.reverted;
+
+		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [NFT_ID]);
+		await erc1155ClaimerInstance.setRandomClaimEntry(EVENT_ID, userOne.address, claimableAmount);
+		await erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, EVENT_ID);
+		await expect(erc1155ClaimerInstance.connect(userOne).claim(RANDOM_CLAIM_EVENT_TYPE, EVENT_ID)).to.be.revertedWith(
+			"The claim event is ended"
+		);
+	});
+
 	it("Should allow a user to claim in a Random Claim event even if there are 0 NFTs available in the contract (no NFTs will be moved)", async function () {
 		const { userOne, erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
 		const RANDOM_CLAIM_EVENT_TYPE = 1; // enum in the smart contract
