@@ -396,6 +396,84 @@ describe("Collection mint testing", function () {
 		// Reverts because the contract is paused
 		await collectionMinter.pause();
 		await expect(collectionMinter.connect(userOne).mintTokens(1, 5, { value: 50 })).to.be.reverted;
+
+		// Create sale phase (UNLIMITED amount of tokens per wallet and FREE mint)
+		await collectionMinter.unpause();
+		await collectionMinter.createSalePhase(false, 1, 1000, true, ZERO_ADDRESS, 10, 0, 100);
+		await expect(collectionMinter.connect(userOne).mintTokens(1, 6, { value: 60 })).to.not.be.reverted;
+	});
+
+	it("Should allow to buy with ERC20 tokens", async function () {
+		const { deployer, userOne, userTwo, collectionMinter, erc20 } = await loadFixture(deployContractsFixture);
+
+		await collectionMinter.grantRole(MANAGER_ROLE, deployer.address);
+		await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
+		await collectionMinter.enableMint();
+
+		const MINT_PRICE = 55;
+		const UNLIMITED_MINTABLE_TOKENS = 0;
+
+		// Mint some tokens to use for paying mint price
+		await erc20.mint(deployer.address, MINT_PRICE * 4);
+		await erc20.mint(userOne.address, Math.floor(MINT_PRICE / 2));
+
+		// Create sale phase (limited amount of tokens per wallet)
+		await collectionMinter.createSalePhase(false, 1, 1000, false, erc20.address, MINT_PRICE, 2, 100);
+
+		// Revers becasue the gas for paying the fee is more than expected correct
+		await expect(collectionMinter.mintTokens(1, 1, { value: 150 })).to.be.reverted;
+
+		// Revers becasue the sale phase doesn't exist
+		await expect(collectionMinter.mintTokens(1, 2, { value: 50 })).to.be.revertedWith(
+			"This sale phase doesn't exists."
+		);
+
+		// Create sale phase (UNLIMITED amount of tokens per wallet)
+		await collectionMinter.createSalePhase(
+			false,
+			1,
+			1000,
+			false,
+			erc20.address,
+			MINT_PRICE,
+			UNLIMITED_MINTABLE_TOKENS,
+			100
+		);
+
+		// Revers becasue the allowance is not enough to cover the mint price
+		await expect(collectionMinter.mintTokens(1, 2, { value: 50 })).to.be.revertedWith(
+			"The current allowance can't cover the full mint price."
+		);
+
+		// Create sale phase (UNLIMITED amount of tokens per wallet and FREE mint)
+		await collectionMinter.createSalePhase(false, 1, 1000, false, erc20.address, 0, UNLIMITED_MINTABLE_TOKENS, 100);
+
+		// Mint an NFT for free
+		await expect(collectionMinter.mintTokens(1, 3, { value: 50 })).to.not.be.reverted;
+
+		// Create sale phase (10 tokens per wallet and FREE mint)
+		await collectionMinter.createSalePhase(false, 1, 1000, false, erc20.address, 0, 10, 100);
+		await expect(collectionMinter.mintTokens(1, 4, { value: 50 })).to.not.be.reverted;
+
+		// "Should allow to trigger the fallback function"
+		const tx = await deployer.sendTransaction({
+			to: collectionMinter.address,
+			value: ethers.utils.parseEther("0.00000000000000005"), // 50 wei
+			data: collectionMinter.interface.encodeFunctionData("mintTokens", [1, 4]),
+		});
+
+		// Wait for the transaction to be mined
+		await tx.wait();
+
+		// Send transaction with value (assuming you want to send some value)
+		const tx2 = await deployer.sendTransaction({
+			to: collectionMinter.address,
+			value: ethers.utils.parseEther("0.1"), // 0.1 ETH
+			data: "0x00",
+		});
+
+		// Wait for the transaction to be mined
+		await expect(tx2.wait()).to.not.be.reverted;
 	});
 
 	it("Should allow to pay the mint with ERC20 tokens", async function () {
