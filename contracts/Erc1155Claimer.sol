@@ -780,7 +780,7 @@ contract Erc1155Claimer is
                         nftsLeft;
                     return (nftsToClaim, 0, availableAmounts);
                 } else {
-                    nftsToClaim[i] = availableAmounts[index];
+                    nftsToClaim[index] = availableAmounts[index];
                     nftsLeft = nftsLeft - availableAmounts[index];
                     availableAmounts[index] = 0;
                 }
