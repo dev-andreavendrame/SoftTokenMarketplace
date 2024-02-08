@@ -455,8 +455,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             tokenInstance.allowance(buyer, address(this)) >= mintPrice,
             "The current allowance can't cover the full mint price."
         );
-        bool sent = tokenInstance.transferFrom(buyer, address(this), mintPrice);
-        require(sent, "Error while paying mint price");
+        tokenInstance.safeTransferFrom(buyer, address(this), mintPrice);
     }
 
     /**
