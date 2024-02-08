@@ -729,7 +729,6 @@ contract Erc1155Claimer is
         )
     {
         uint256[] memory nftsToClaim = new uint256[](availableAmounts.length);
-        uint256[] memory currentAvailableAmounts = availableAmounts;
         uint256 nftsLeft = amountToClaim;
 
         // Calculate the initial seed
@@ -802,7 +801,7 @@ contract Erc1155Claimer is
             "Error with distributing random NFTs, try again"
         );
 
-        return (nftsToClaim, nftsLeft, currentAvailableAmounts);
+        return (nftsToClaim, nftsLeft, availableAmounts);
     }
 
     /**
