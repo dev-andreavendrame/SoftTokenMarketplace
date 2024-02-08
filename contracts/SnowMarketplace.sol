@@ -10,7 +10,7 @@
  * \____/  \_/\___|\___|_| |_| \____/ \__|\__,_|\__,_|_|\___/
  *
  */
-pragma solidity ^0.8.19;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
