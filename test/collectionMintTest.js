@@ -246,6 +246,7 @@ describe("Collection mint testing", function () {
 
 		//await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 		await collectionMinter.grantRole(MANAGER_ROLE, deployer.address);
+		await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 
 		//await collectionMinter.pause();
 
@@ -257,6 +258,41 @@ describe("Collection mint testing", function () {
 		await expect(collectionMinter.revokeWhitelistFromSalePhase(0, [userOne.address])).to.be.revertedWith(
 			"The provided sale phase hasn't been created yet."
 		);
+
+		// Reverts because the contract is paused
+		await collectionMinter.pause();
+		await expect(collectionMinter.revokeWhitelistFromSalePhase(0, [userOne.address])).to.be.reverted;
+
+		// Reverts because user One has not the MANAGER_ROLE role granted
+		await collectionMinter.unpause();
+		await expect(collectionMinter.connect(userOne).revokeWhitelistFromSalePhase(0, [userOne.address])).to.be.reverted;
+
+		// Reverts because the provided sale phase hasn't been created yet
+		await expect(collectionMinter.revokeWhitelistFromSalePhase(4, [userOne.address])).to.be.revertedWith(
+			"The provided sale phase hasn't been created yet."
+		);
+
+		// Grant and revoke whitelist from sale phase
+		await collectionMinter.createSalePhase(true, 1, 100, true, ZERO_ADDRESS, 100, 1, 100);
+		await collectionMinter.grantWhitelistForSalePhase(1, [userOne.address]);
+		await collectionMinter.revokeWhitelistFromSalePhase(1, [userOne.address]);
+
+		// Grant and revoke whitelist from sale phase
+		await collectionMinter.createSalePhase(false, 1, 100, true, ZERO_ADDRESS, 100, 1, 100);
+		await expect(collectionMinter.grantWhitelistForSalePhase(2, [userOne.address])).to.be.revertedWith(
+			"This phase doesn't require a whitelist."
+		);
+		await expect(collectionMinter.revokeWhitelistFromSalePhase(2, [userOne.address])).to.be.revertedWith(
+			"This phase doesn't require a whitelist"
+		);
+
+		// Reverts because user One has not the MANAGER_ROLE role granted
+		await collectionMinter.createSalePhase(true, 1, 100, true, ZERO_ADDRESS, 100, 1, 100);
+		await expect(collectionMinter.connect(userOne).grantWhitelistForSalePhase(3, [userOne.address])).to.be.reverted;
+
+		// Reverts becasue the contract is paused
+		await collectionMinter.pause();
+		await expect(collectionMinter.grantWhitelistForSalePhase(3, [userOne.address])).to.be.reverted;
 	});
 
 	it("Should not allow wallet WITHOUT the MANAGER_ROLE role to create a new sale phase", async function () {
@@ -474,6 +510,69 @@ describe("Collection mint testing", function () {
 
 		// Wait for the transaction to be mined
 		await expect(tx2.wait()).to.not.be.reverted;
+	});
+
+	it("Should allow to withdraw funds from mint sales", async function () {
+		const { deployer, userOne, collectionMinter, erc20 } = await loadFixture(deployContractsFixture);
+
+		await collectionMinter.grantRole(MANAGER_ROLE, deployer.address);
+		await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
+		await collectionMinter.enableMint();
+
+		const MINT_PRICE = 55;
+		const UNLIMITED_MINTABLE_TOKENS = 0;
+
+		// Mint some tokens to use for paying mint price
+		await erc20.mint(deployer.address, MINT_PRICE * 4);
+
+		// Create sale phase (limited amount of tokens per wallet)
+		await collectionMinter.createSalePhase(false, 1, 1000, false, erc20.address, MINT_PRICE, 2, 100);
+
+		// Revers becasue the gas for paying the fee is more than expected correct
+		await expect(collectionMinter.mintTokens(1, 1, { value: 150 })).to.be.reverted;
+
+		// Create sale phase (UNLIMITED amount of tokens per wallet)
+		await collectionMinter.createSalePhase(
+			false,
+			1,
+			1000,
+			false,
+			erc20.address,
+			MINT_PRICE,
+			UNLIMITED_MINTABLE_TOKENS,
+			100
+		);
+
+		// Revers becasue the allowance is not enough to cover the mint price
+		await expect(collectionMinter.mintTokens(1, 2, { value: 50 })).to.be.revertedWith(
+			"The current allowance can't cover the full mint price."
+		);
+
+		// Create sale phase (UNLIMITED amount of tokens per wallet and FREE mint)
+		await collectionMinter.createSalePhase(false, 1, 1000, false, erc20.address, 0, UNLIMITED_MINTABLE_TOKENS, 100);
+
+		// Mint an NFT for free
+		await expect(collectionMinter.mintTokens(1, 3, { value: 50 })).to.not.be.reverted;
+
+		// Reverts becasue the user Onw has not the MANAGER_ROLE role granted
+		await expect(collectionMinter.connect(userOne).withdrawFunds(false, erc20.address)).to.be.reverted;
+
+		// Reverts because there are 0 tokens to withdraw
+		await expect(collectionMinter.withdrawFunds(false, erc20.address)).to.be.revertedWith("Cannot withdraw 0 tokens");
+
+		// Should allow to withdraw funds
+		await collectionMinter.createSalePhase(
+			false,
+			1,
+			1000,
+			false,
+			erc20.address,
+			MINT_PRICE,
+			UNLIMITED_MINTABLE_TOKENS,
+			100
+		);
+		await erc20.approve(collectionMinter.address, MINT_PRICE * 4);
+		await expect(collectionMinter.mintTokens(1, 4, { value: 50 })).to.not.be.reverted;
 	});
 
 	it("Should allow to pay the mint with ERC20 tokens", async function () {
