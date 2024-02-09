@@ -149,15 +149,9 @@ contract SnowMarketplace is AccessControl {
         _grantRole(MANAGER_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
 
-        // Initialization
-        currentOrderId = 0;
-        onSaleErc721Tokens = 0;
-        onSaleErc1155Tokens = 0;
-        ordersFullfilled = 0;
-
         snowSoftTokenAddress = snowTokenContract; // Assumed to be valid
 
-        isMarketplaceActive = true; // enable marketplace usage
+        isMarketplaceActive = true; // enable marketplace usage from the beginning
 
         maxActiveOrdesAmount = _maxActiveOrdesAmount; // Set the limit to the max active orders amount
     }
@@ -413,8 +407,8 @@ contract SnowMarketplace is AccessControl {
     function _removeActiveOrder(uint256 orderId) private {
         // Delete the order from the active orders list
         uint256 activeOrdersNumber = activeOrders.length;
-        uint256 orderIndex = 0;
-        bool idFound = false;
+        uint256 orderIndex;
+        bool idFound;
 
         for (uint256 i = 0; i < activeOrdersNumber; i++) {
             if (activeOrders[i] == orderId) {

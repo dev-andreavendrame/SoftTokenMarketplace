@@ -280,7 +280,6 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         );
 
         // Setup storage contract information related to the sale
-        salePhaseMintedTokensCounter[phaseId] = 0;
         salePhaseDetails[phaseId] = salePhase;
 
         return phaseId;

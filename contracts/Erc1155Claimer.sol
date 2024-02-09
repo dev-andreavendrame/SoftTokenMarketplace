@@ -281,7 +281,7 @@ contract Erc1155Claimer is
             "Claimers and amounts don't have the same length"
         );
 
-        uint256 totalClaimableAmount = 0;
+        uint256 totalClaimableAmount;
 
         for (uint256 i = 0; i < claimableAmounts.length; i++) {
             // Check parameter validity
@@ -550,7 +550,7 @@ contract Erc1155Claimer is
             revert("No NFTs in the smart contract to claim");
         }
 
-        uint256 claimableNfts = 0;
+        uint256 claimableNfts;
 
         if (nftsToClaim > contractNftsBalance) {
             // Can't claim all the assigned NFTs
@@ -619,7 +619,7 @@ contract Erc1155Claimer is
         );
 
         // Calculate how many NFTs will be distributed
-        uint256 claimedNfts = 0;
+        uint256 claimedNfts;
         for (uint256 i = 0; i < claimableDistribution.length; i++) {
             claimedNfts = claimedNfts + claimableDistribution[i];
         }
@@ -744,7 +744,7 @@ contract Erc1155Claimer is
         // Calculate starting point to choose the first NFT in the available amounts
         uint256 index = seed % availableAmounts.length;
         // Initial value to get a random amount
-        uint256 maxRandom = 0;
+        uint256 maxRandom;
         if (amountToClaim < availableAmounts.length) {
             maxRandom = 1;
         } else {
@@ -757,7 +757,7 @@ contract Erc1155Claimer is
 
             // Operations
             uint256 randomNumber = (seed % maxRandom) + 1;
-            uint256 nftsToAssign = 0;
+            uint256 nftsToAssign;
             if (nftsLeft >= randomNumber) {
                 nftsToAssign = randomNumber;
                 if (nftsToAssign <= availableAmounts[index]) {
@@ -791,7 +791,7 @@ contract Erc1155Claimer is
             index = index + 1;
         }
 
-        uint256 totalClaimed = 0;
+        uint256 totalClaimed;
         for (uint256 i = 0; i < availableAmounts.length; i++) {
             totalClaimed = totalClaimed + nftsToClaim[i];
         }
@@ -839,13 +839,13 @@ contract Erc1155Claimer is
         )
     {
         // Calculate an average-like value to use in the next distribution steps
-        uint256 fakeAverage = 0;
+        uint256 fakeAverage;
         uint256[] memory nftsToClaim = currentDistribution;
         uint256[] memory currentAvailableAmounts = availableAmounts;
         uint256 nftsLeft = amountToClaim;
 
-        uint256 initialAvailableAmount = 0;
-        uint256 initialDistributedAmount = 0;
+        uint256 initialAvailableAmount;
+        uint256 initialDistributedAmount;
 
         for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
             initialAvailableAmount =
@@ -891,7 +891,7 @@ contract Erc1155Claimer is
         }
 
         // Debug
-        uint256 finalDistributedAmount = 0;
+        uint256 finalDistributedAmount;
         for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
             finalDistributedAmount = finalDistributedAmount + nftsToClaim[i];
         }
@@ -1006,8 +1006,8 @@ contract Erc1155Claimer is
     function _removeSimpleClaimActiveEvent(uint256 orderId) private {
         // Delete the order from the active Ids list
         uint256 activeOrdersNumber = _simpleClaimEventsActive.length;
-        uint256 orderIndex = 0;
-        bool idFound = false;
+        uint256 orderIndex;
+        bool idFound;
 
         for (uint256 i = 0; i < activeOrdersNumber; i++) {
             if (_simpleClaimEventsActive[i] == orderId) {
@@ -1039,8 +1039,8 @@ contract Erc1155Claimer is
     function _removeRandomClaimActiveEvent(uint256 orderId) private {
         // Delete the order from the active Ids list
         uint256 activeOrdersNumber = _randomClaimEventsActive.length;
-        uint256 orderIndex = 0;
-        bool idFound = false;
+        uint256 orderIndex;
+        bool idFound;
 
         for (uint256 i = 0; i < activeOrdersNumber; i++) {
             if (_randomClaimEventsActive[i] == orderId) {

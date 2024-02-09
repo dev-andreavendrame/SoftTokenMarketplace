@@ -102,10 +102,6 @@ contract SnowTracker is Pausable, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
-
-        // Initialize contract state
-        uniqueHolders = 0;
-        totalSupply = 0;
     }
 
     //------------------------------------------------------------------//
