@@ -568,7 +568,7 @@ contract Erc1155Claimer is
             claimer,
             eventDetails.tokenId,
             claimableNfts,
-            "0x00"
+            ""
         );
 
         return claimableNfts;
@@ -638,7 +638,7 @@ contract Erc1155Claimer is
             claimer,
             eventDetails.tokenIds,
             claimableDistribution,
-            "0x00"
+            ""
         );
 
         return claimedNfts;

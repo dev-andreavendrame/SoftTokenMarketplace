@@ -473,7 +473,7 @@ contract SnowMarketplace is AccessControl {
             }
             // Transfer back NFT
             ERC1155 tokenInstance = ERC1155(contractAddress);
-            tokenInstance.safeTransferFrom(from, to, tokenId, amount, "0x00");
+            tokenInstance.safeTransferFrom(from, to, tokenId, amount, "");
         }
     }
 
