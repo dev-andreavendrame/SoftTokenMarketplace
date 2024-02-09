@@ -63,6 +63,12 @@ contract Erc721Collection is
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant URI_EDITOR_ROLE = keccak256("URI_EDITOR_ROLE");
 
+    // Interface to support
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+    bytes4 private constant _INTERFACE_ID_ACCESS_CONTROL = 0x7965db0b;
+    bytes4 private constant _INTERFACE_ID_ERC721_URI_STORAGE = 0x49064906;
+    bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
+
     // NFT token ID counter
     uint256 private _nextTokenId;
 
@@ -205,7 +211,12 @@ contract Erc721Collection is
         override(ERC2981, ERC721, ERC721URIStorage, AccessControl)
         returns (bool)
     {
-        return super.supportsInterface(interfaceId);
+        return
+            interfaceId == _INTERFACE_ID_ERC2981 ||
+            interfaceId == _INTERFACE_ID_ACCESS_CONTROL ||
+            interfaceId == _INTERFACE_ID_ERC721_URI_STORAGE ||
+            interfaceId == _INTERFACE_ID_ERC721 ||
+            super.supportsInterface(interfaceId);
     }
 
     //------------------------------------------------------------------//

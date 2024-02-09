@@ -169,6 +169,12 @@ describe("Collection mint testing", function () {
 		const supportsAccessControl = await erc721Collection.supportsInterface("0x7965db0b");
 		const supportsERC721URIStorage = await erc721Collection.supportsInterface("0x49064906");
 		const supportsERC721 = await erc721Collection.supportsInterface("0x80ac58cd");
+		const arbitraryInterfaceId = ethers.utils.id("0x00000000");
+
+		await expect(erc721Collection.supportsInterface("0x00000000")).to.not.be.reverted;
+		await erc721Collection.supportsInterface("0xffffffff");
+		await erc721Collection.supportsInterface("0x01ffc9a7");
+		await erc721Collection.supportsInterface("0x4e2312e0");
 
 		expect(supportsERC2981 && supportsAccessControl && supportsERC721URIStorage && supportsERC721).to.equal(true);
 	});
