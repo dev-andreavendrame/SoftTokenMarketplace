@@ -21,7 +21,7 @@ describe("Collection mint testing", function () {
 
 		// Deploy the Erc721collection contract
 		const Erc721Collection = await ethers.getContractFactory("Erc721Collection");
-		const erc721Collection = await Erc721Collection.deploy(0, MAX_COLLECTION_SUPPLY, 250, "my_custom_URI");
+		const erc721Collection = await Erc721Collection.deploy(1, MAX_COLLECTION_SUPPLY, 250, "my_custom_URI");
 		await erc721Collection.deployed();
 
 		// Deploy the CollectionMinter contract
@@ -89,7 +89,7 @@ describe("Collection mint testing", function () {
 
 		await erc721Collection.grantRole(MINTER_ROLE, deployer.address);
 		await expect(erc721Collection.safeMint(deployer.address)).to.not.be.reverted;
-		const tokenURI = await erc721Collection.tokenURI(0);
+		const tokenURI = await erc721Collection.tokenURI(1);
 		console.log(tokenURI);
 	});
 

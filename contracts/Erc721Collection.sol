@@ -249,7 +249,7 @@ contract Erc721Collection is
      * @notice Get the MAX collection supply
      */
     function getMaxCollectionSupply() public view returns (uint256) {
-        return maximumNftTokenId - minimumNftTokenId;
+        return maximumNftTokenId - minimumNftTokenId + 1;
     }
 
     //------------------------------------------------------------------//
