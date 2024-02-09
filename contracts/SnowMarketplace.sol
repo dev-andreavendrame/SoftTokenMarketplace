@@ -578,9 +578,6 @@ contract SnowMarketplace is AccessControl {
             "The contract can't receive NFTs from this address"
         );
 
-        return
-            bytes4(
-                keccak256("onERC721Received(address,address,uint256,bytes)")
-            );
+        return IERC721Receiver.onERC721Received.selector;
     }
 }
