@@ -158,6 +158,12 @@ contract Erc721Collection is
      * @param to wallet that will receive the minted token
      */
     function safeMint(address to) public onlyRole(MINTER_ROLE) whenNotPaused {
+        // Check if mint cap is reached
+        require(
+            _nextTokenId < maximumNftTokenId + 1,
+            "Max supply reached. Can't mint more tokens"
+        );
+
         uint256 tokenId = _nextTokenId;
         _nextTokenId++;
         _safeMintToken(to, tokenId);

@@ -47,6 +47,38 @@ describe("Collection mint testing", function () {
 		};
 	}
 
+	async function deploySmallCollectionContractsFixture() {
+		// Define process actors
+		const [deployer, userOne, userTwo, contractProvider] = await ethers.getSigners();
+
+		// Deploy the Erc721collection contract
+		const Erc721Collection = await ethers.getContractFactory("Erc721Collection");
+		const erc721Collection = await Erc721Collection.deploy(0, 0, 250, "my_custom_URI");
+		await erc721Collection.deployed();
+
+		// Deploy the CollectionMinter contract
+		const CollectionMinter = await ethers.getContractFactory("CollectionMinter");
+		const collectionMinter = await CollectionMinter.deploy(erc721Collection.address, 50, contractProvider.address);
+		await collectionMinter.deployed();
+
+		await erc721Collection.grantRole(MINTER_ROLE, collectionMinter.address);
+
+		// Deploy an ERC20 for paying the minting
+		const Erc20 = await ethers.getContractFactory("MyToken");
+		const erc20 = await Erc20.deploy();
+		await erc20.deployed();
+
+		return {
+			deployer,
+			userOne,
+			userTwo,
+			contractProvider,
+			erc721Collection,
+			collectionMinter,
+			erc20,
+		};
+	}
+
 	// Erc20 mint test
 	it("Should allow to mint Erc20 tokens", async function () {
 		const { erc20, deployer } = await loadFixture(deployContractsFixture);
@@ -82,6 +114,19 @@ describe("Collection mint testing", function () {
 		await erc721Collection.grantRole(MINTER_ROLE, deployer.address);
 		await expect(erc721Collection.connect(userOne).safeMint(deployer.address)).to.be.reverted;
 		await expect(erc721Collection.safeMint(deployer.address)).to.not.be.reverted;
+	});
+
+	// Should allow to stop the mint if the collection cap has been reached
+	it("Should allow to grant the MINTER_ROLE role and mint a token directly from the ERC721 collection", async function () {
+		const { deployer, erc721Collection } = await loadFixture(deploySmallCollectionContractsFixture);
+
+		await erc721Collection.grantRole(MINTER_ROLE, deployer.address);
+		await erc721Collection.getCurrentSupply();
+		await expect(erc721Collection.safeMint(deployer.address)).to.not.be.reverted;
+		console.log(await erc721Collection.getCurrentSupply());
+		await expect(erc721Collection.safeMint(deployer.address)).to.be.revertedWith(
+			"Max supply reached. Can't mint more tokens"
+		);
 	});
 
 	it("Should allow to check the token URI of a minted token", async function () {
@@ -356,7 +401,7 @@ describe("Collection mint testing", function () {
 	});
 
 	it("Should allow wallet with the MANAGER_ROLE role to grant the whitelist for a sale phase (and vice versa)", async function () {
-		const { deployer, userOne, collectionMinter } = await loadFixture(deployContractsFixture);
+		const { deployer, userOne, collectionMinter, erc721Collection } = await loadFixture(deployContractsFixture);
 
 		//await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 		await collectionMinter.grantRole(MANAGER_ROLE, deployer.address);
@@ -385,12 +430,14 @@ describe("Collection mint testing", function () {
 	});
 
 	it("Should allow wallet with the MANAGER_ROLE role to create a new sale phase", async function () {
-		const { deployer, userOne, collectionMinter } = await loadFixture(deployContractsFixture);
+		const { deployer, userOne, collectionMinter, erc721Collection } = await loadFixture(deployContractsFixture);
 
 		//await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 		await collectionMinter.grantRole(MANAGER_ROLE, deployer.address);
 		await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 		await collectionMinter.enableMint();
+
+		await erc721Collection.getCurrentSupply();
 
 		// Reverts becasue the value used to pay the mint is not enough
 		await collectionMinter.createSalePhase(false, 1, 1000, true, ZERO_ADDRESS, 100, 1, 100);
