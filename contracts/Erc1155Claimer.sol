@@ -1013,6 +1013,7 @@ contract Erc1155Claimer is
             if (_simpleClaimEventsActive[i] == orderId) {
                 orderIndex = i;
                 idFound = true;
+                break;
             }
         }
 
@@ -1046,6 +1047,7 @@ contract Erc1155Claimer is
             if (_randomClaimEventsActive[i] == orderId) {
                 orderIndex = i;
                 idFound = true;
+                break;
             }
         }
 
