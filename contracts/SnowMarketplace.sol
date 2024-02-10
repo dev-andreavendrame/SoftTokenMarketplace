@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "./SnowTracker.sol";
+import "./ISnowTracker.sol";
 
 /**
  * @dev Contract that acts as a marketplace, allowing to buy and sell
@@ -381,7 +381,7 @@ contract SnowMarketplace is AccessControl {
         _removeActiveOrder(orderId);
 
         // Check if the sender has enough balance
-        SnowTracker tracker = SnowTracker(snowSoftTokenAddress);
+        ISnowTracker tracker = ISnowTracker(snowSoftTokenAddress);
 
         if (tracker.balances(_msgSender()) >= order.price) {
             // Decrease balance (reduce reentrancy risks)
