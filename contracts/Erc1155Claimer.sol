@@ -15,7 +15,6 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
@@ -540,7 +539,7 @@ contract Erc1155Claimer is
         uint256 nftsToClaim = simpleClaimableNfts[claimId][claimer];
         require(nftsToClaim > 0, "You don't have any NFT to claim");
 
-        ERC1155 erc1155instance = ERC1155(eventDetails.contractAddress);
+        IERC1155 erc1155instance = IERC1155(eventDetails.contractAddress);
         uint256 contractNftsBalance = erc1155instance.balanceOf(
             address(this),
             eventDetails.tokenId
@@ -595,7 +594,7 @@ contract Erc1155Claimer is
         uint256 nftsToClaim = randomClaimableNfts[claimId][claimer];
         require(nftsToClaim > 0, "You don't have any NFT to claim");
 
-        ERC1155 erc1155instance = ERC1155(eventDetails.contractAddress);
+        IERC1155 erc1155instance = IERC1155(eventDetails.contractAddress);
 
         uint256[] memory availableAmounts = new uint256[](uniqueIdsLength);
 

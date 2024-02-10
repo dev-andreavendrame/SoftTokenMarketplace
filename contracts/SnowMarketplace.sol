@@ -13,8 +13,8 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./SnowTracker.sol";
 
@@ -223,13 +223,13 @@ contract SnowMarketplace is AccessControl {
         );
         // Check sender NFTs balance to create the order
         if (nftType == NftType.ERC1155) {
-            ERC1155 tokenInstance = ERC1155(contractAddress);
+            IERC1155 tokenInstance = IERC1155(contractAddress);
             require(
                 tokenInstance.balanceOf(_msgSender(), tokenId) > 0,
                 "No tokens available to create the order"
             );
         } else {
-            ERC721 collectionInstance = ERC721(contractAddress);
+            IERC721 collectionInstance = IERC721(contractAddress);
             require(
                 collectionInstance.ownerOf(tokenId) == _msgSender(),
                 "You don't own the token to put on sale"
@@ -455,7 +455,7 @@ contract SnowMarketplace is AccessControl {
                 onSaleErc721Tokens += 1;
             }
             // Transfer NFT
-            ERC721 collectionInstance = ERC721(contractAddress);
+            IERC721 collectionInstance = IERC721(contractAddress);
             collectionInstance.safeTransferFrom(from, to, tokenId);
         } else {
             // Can be only an ERC1155
@@ -466,7 +466,7 @@ contract SnowMarketplace is AccessControl {
                 onSaleErc1155Tokens += 1;
             }
             // Transfer back NFT
-            ERC1155 tokenInstance = ERC1155(contractAddress);
+            IERC1155 tokenInstance = IERC1155(contractAddress);
             tokenInstance.safeTransferFrom(from, to, tokenId, amount, "");
         }
     }
