@@ -476,7 +476,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
     /**
      * @dev Pay the mint fee {providerMintFee} to the fee receiver {contractProvider}
      *      upon a new successful mint. If the number of tokens to mint
-     *      is more than 1 the fee will be paid one time for all the tokens.
+     *      is more than 1 the fee will be equal to {providerMintFee} * tokensToMint.
      *
      * @param tokensToMint number of tokens of which pay the mint fee.
      */
