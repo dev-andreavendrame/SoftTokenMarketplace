@@ -88,6 +88,15 @@ contract SnowMarketplace is AccessControl {
         uint256 _atBlock
     );
 
+    event MarketplacePaused(address indexed _by, uint256 _atBlock);
+    event MarketplaceUnpaused(address indexed _by, uint256 _atBlock);
+
+    event SnowContractUpdated(
+        address indexed _newConctract,
+        address indexed _by,
+        uint256 _atBlock
+    );
+
     //------------------------------------------------------------------//
     //---------------------- Enumerators and structs -------------------//
     //------------------------------------------------------------------//
@@ -166,6 +175,7 @@ contract SnowMarketplace is AccessControl {
      */
     function pauseMarketplace() external onlyRole(MANAGER_ROLE) {
         isMarketplaceActive = false;
+        emit MarketplacePaused(_msgSender(), block.number);
     }
 
     /**
@@ -174,6 +184,7 @@ contract SnowMarketplace is AccessControl {
      */
     function unpauseMarketplace() external onlyRole(MANAGER_ROLE) {
         isMarketplaceActive = true;
+        emit MarketplaceUnpaused(_msgSender(), block.number);
     }
 
     //------------------------------------------------------------------//
@@ -490,6 +501,7 @@ contract SnowMarketplace is AccessControl {
         );
 
         snowSoftTokenAddress = newContract;
+        emit SnowContractUpdated(newContract, _msgSender(), block.number);
     }
 
     //------------------------------------------------------------------//

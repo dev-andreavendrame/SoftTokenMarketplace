@@ -121,6 +121,58 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
     event FundsWithdrawn(address indexed _from, uint256 indexed _amount);
     event NativePaymentReceived(address indexed _from, uint256 indexed _amount);
 
+    event MintEnabled(address indexed _by, uint256 _atBlock);
+    event MintDisabled(address indexed _by, uint256 _atBlock);
+
+    event SalePhaseCreated(
+        address indexed _from,
+        uint256 indexed _id,
+        uint256 _atBlock
+    );
+
+    event WhitelistGranted(
+        address indexed _from,
+        address indexed _to,
+        uint256 _salePhaseId
+    );
+
+    event WhitelistRevoked(
+        address indexed _from,
+        address indexed _to,
+        uint256 _salePhaseId
+    );
+
+    event SalePhaseDisabled(
+        address indexed _by,
+        uint256 indexed _id,
+        uint256 _atBlock
+    );
+
+    event FundsReceiverUpdated(
+        address indexed _by,
+        address indexed _newReceiver,
+        uint256 _atBlock
+    );
+
+    event MintPaidWithNativeCurrency(
+        address indexed _by,
+        uint256 indexed _amount,
+        uint256 _atBlock
+    );
+
+    event MintPaidWithErc20(
+        address indexed _by,
+        address indexed _contract,
+        uint256 indexed _amount,
+        uint256 _atBlock
+    );
+
+    event MintFeePaid(
+        address indexed _from,
+        uint256 indexed _amount,
+        uint256 _atBlock
+    );
+
     //------------------------------------------------------------------//
     //---------------------- Custom errors -----------------------------//
     //------------------------------------------------------------------//
@@ -200,6 +252,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
      */
     function disableMint() external onlyRole(MANAGER_ROLE) {
         isMintPaused = true;
+        emit MintDisabled(_msgSender(), block.number);
     }
 
     /**
@@ -209,6 +262,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
      */
     function enableMint() external onlyRole(MANAGER_ROLE) {
         isMintPaused = false;
+        emit MintEnabled(_msgSender(), block.number);
     }
 
     //------------------------------------------------------------------//
@@ -282,6 +336,8 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         // Setup storage contract information related to the sale
         salePhaseDetails[phaseId] = salePhase;
 
+        emit SalePhaseCreated(_msgSender(), phaseId, block.number);
+
         return phaseId;
     }
 
@@ -323,6 +379,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < wallets.length; i++) {
             address toWhitelist = wallets[i];
             whitelistedPhaseWallets[salePhaseId][toWhitelist] = true;
+            emit WhitelistGranted(_msgSender(), toWhitelist, salePhaseId);
         }
     }
 
@@ -354,6 +411,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         for (uint256 i = 0; i < wallets.length; i++) {
             address toRemoveWhitelist = wallets[i];
             whitelistedPhaseWallets[salePhaseId][toRemoveWhitelist] = false;
+            emit WhitelistRevoked(_msgSender(), toRemoveWhitelist, salePhaseId);
         }
     }
 
@@ -371,6 +429,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
     {
         salePhaseDetails[salePhaseId].startBlock = 1000;
         salePhaseDetails[salePhaseId].endBlock = 1001;
+        emit SalePhaseDisabled(_msgSender(), salePhaseId, block.number);
     }
 
     //------------------------------------------------------------------//
@@ -389,6 +448,11 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         fundsReceiver = _newFundsReceiver;
+        emit FundsReceiverUpdated(
+            _msgSender(),
+            _newFundsReceiver,
+            block.number
+        );
     }
 
     /**
@@ -455,6 +519,12 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             "The current allowance can't cover the full mint price."
         );
         tokenInstance.safeTransferFrom(buyer, address(this), mintPrice);
+        emit MintPaidWithErc20(
+            _msgSender(),
+            paymentToken,
+            mintPrice,
+            block.number
+        );
     }
 
     /**
@@ -471,6 +541,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         address payable contractAddress = payable(address(this));
         (bool sent, ) = contractAddress.call{value: mintPrice}("");
         require(sent, "Failed to pay the mint price");
+        emit MintPaidWithNativeCurrency(_msgSender(), mintPrice, block.number);
     }
 
     /**
@@ -487,6 +558,11 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             }("");
             require(sent, "Failed to pay the mint fee");
         }
+        emit MintFeePaid(
+            _msgSender(),
+            providerMintFee * tokensToMint,
+            block.number
+        );
     }
 
     /**
