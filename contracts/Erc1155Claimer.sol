@@ -681,17 +681,34 @@ contract Erc1155Claimer is
             amountToClaim
         );
 
-        (nftsToClaim, nftsLeft, currentAvailableAmounts) = _averageDistribution(
-            nftsToClaim,
-            nftsLeft,
-            currentAvailableAmounts
-        );
+        // Check if the distribution has been already calculated
+        if (nftsLeft > 0) {
+            (
+                nftsToClaim,
+                nftsLeft,
+                currentAvailableAmounts
+            ) = _averageDistribution(
+                nftsToClaim,
+                nftsLeft,
+                currentAvailableAmounts
+            );
+        } else {
+            // Can only have nftsLeft == 0
+            return nftsToClaim;
+        }
 
-        (nftsToClaim, nftsLeft, currentAvailableAmounts) = _finalDistribution(
-            nftsToClaim,
-            nftsLeft,
-            currentAvailableAmounts
-        );
+        // Check if the distribution has been already calculated
+        if (nftsLeft > 0) {
+            (
+                nftsToClaim,
+                nftsLeft,
+                currentAvailableAmounts
+            ) = _finalDistribution(
+                nftsToClaim,
+                nftsLeft,
+                currentAvailableAmounts
+            );
+        }
 
         return nftsToClaim;
     }
