@@ -751,6 +751,9 @@ contract Erc1155Claimer is
             maxRandom = amountToClaim / availableAmounts.length + 1;
         }
 
+        // Keep track of the NFTs claimed
+        uint256 totalClaimed;
+
         for (uint256 i = 0; i < availableAmounts.length; i++) {
             // Reset index if max length reached
             index = index % availableAmounts.length;
@@ -786,14 +789,11 @@ contract Erc1155Claimer is
                 }
             }
 
+            // Update NFTs claimed
+            totalClaimed = totalClaimed + nftsToClaim[index];
             // Recalculate seed & index
             seed = uint256(keccak256(abi.encodePacked(seed, gasleft())));
             index = index + 1;
-        }
-
-        uint256 totalClaimed;
-        for (uint256 i = 0; i < availableAmounts.length; i++) {
-            totalClaimed = totalClaimed + nftsToClaim[i];
         }
 
         require(
@@ -860,6 +860,8 @@ contract Erc1155Claimer is
 
         fakeAverage = fakeAverage / currentAvailableAmounts.length + 1;
 
+        uint256 finalDistributedAmount;
+
         for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
             if (nftsLeft >= fakeAverage) {
                 if (fakeAverage >= currentAvailableAmounts[i]) {
@@ -888,11 +890,7 @@ contract Erc1155Claimer is
                     return (nftsToClaim, nftsLeft, currentAvailableAmounts);
                 }
             }
-        }
 
-        // Debug
-        uint256 finalDistributedAmount;
-        for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
             finalDistributedAmount = finalDistributedAmount + nftsToClaim[i];
         }
 
