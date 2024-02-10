@@ -699,15 +699,12 @@ contract Erc1155Claimer is
 
         // Check if the distribution has been already calculated
         if (nftsLeft > 0) {
-            (
-                nftsToClaim,
-                nftsLeft,
-                currentAvailableAmounts
-            ) = _finalDistribution(
-                nftsToClaim,
-                nftsLeft,
-                currentAvailableAmounts
-            );
+            return
+                _finalDistribution(
+                    nftsToClaim,
+                    nftsLeft,
+                    currentAvailableAmounts
+                );
         }
 
         return nftsToClaim;
@@ -945,15 +942,7 @@ contract Erc1155Claimer is
         uint256[] memory currentDistribution,
         uint256 amountToClaim,
         uint256[] memory currentAvailableAmounts
-    )
-        private
-        pure
-        returns (
-            uint256[] memory,
-            uint256,
-            uint256[] memory
-        )
-    {
+    ) private pure returns (uint256[] memory) {
         uint256[] memory nftsToClaim = currentDistribution;
         uint256[] memory remainingAvailableNfts = currentAvailableAmounts;
         uint256 nftsLeft = amountToClaim;
@@ -965,16 +954,16 @@ contract Erc1155Claimer is
                     remainingAvailableNfts[i] =
                         remainingAvailableNfts[i] -
                         nftsLeft;
-                    return (nftsToClaim, 0, remainingAvailableNfts);
+                    return (nftsToClaim);
                 } else {
                     nftsToClaim[i] = nftsToClaim[i] + remainingAvailableNfts[i];
                     nftsLeft = nftsLeft - remainingAvailableNfts[i];
                     remainingAvailableNfts[i] = 0;
                 }
             }
-            return (nftsToClaim, nftsLeft, remainingAvailableNfts);
+            return (nftsToClaim);
         } else {
-            return (nftsToClaim, nftsLeft, remainingAvailableNfts);
+            return (nftsToClaim);
         }
     }
 
