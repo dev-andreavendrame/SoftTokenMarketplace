@@ -38,6 +38,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		const simple1155 = await SimpleErc1155.deploy(deployer.address);
 		await simple1155.deployed();
 
+		// Grant to the deployer the SPENDER_ROLE role
+		await snowTracker.grantRole(SPENDER_ROLE, deployer.address);
+
 		return {
 			deployer,
 			userOne,
@@ -267,36 +270,36 @@ describe("Snow token tracker and marketplace - Test", function () {
 
 		const tokenToSpend = 100;
 		await snowTracker.addTokens(userOne.address, tokenToSpend);
-		await expect(snowTracker.connect(userTwo).spendTokens(userOne.address, tokenToSpend)).to.be.reverted;
+		await expect(snowTracker.connect(userTwo).removeTokens(userOne.address, tokenToSpend)).to.be.reverted;
 	});
 
-	it("Should not revert if a wallet with the role SPENDER_ROLE tries to spend tokens of another wallet address", async function () {
+	it("Should NOT revert if a wallet with the role SPENDER_ROLE tries to spend tokens of another wallet address", async function () {
 		const { snowTracker, deployer, userOne, userTwo } = await loadFixture(deployContractsFixture);
 
 		const tokenToSpend = 100;
 		const TOKENS_TO_ADD = 200;
 		await snowTracker.addTokens(userOne.address, TOKENS_TO_ADD);
 		await snowTracker.grantRole(SPENDER_ROLE, userOne.address);
-		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, tokenToSpend)).to.not.be.reverted;
+		await expect(snowTracker.connect(userOne).removeTokens(userOne.address, tokenToSpend)).to.not.be.reverted;
 
 		// Increase and decrease by 1 the unique holders
 		await snowTracker.addTokens(userTwo.address, TOKENS_TO_ADD);
-		await snowTracker.connect(userOne).spendTokens(userTwo.address, TOKENS_TO_ADD);
+		await snowTracker.connect(userOne).removeTokens(userTwo.address, TOKENS_TO_ADD);
 
 		// Revers because can't spend 0 tokens
-		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, 0)).to.be.revertedWith(
-			"Can't spend zero tokens"
+		await expect(snowTracker.connect(userOne).removeTokens(userOne.address, 0)).to.be.revertedWith(
+			"Can't remove zero tokens"
 		);
 
 		// Revers because can't spend more than the current token balance
-		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, TOKENS_TO_ADD + 1)).to.be.revertedWith(
-			"Can't spend more than the current balance"
+		await expect(snowTracker.connect(userOne).removeTokens(userOne.address, TOKENS_TO_ADD + 1)).to.be.revertedWith(
+			"Can't remove more than the available tokens"
 		);
 
 		// Reverts because the contract is paused
 		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);
 		await snowTracker.pause();
-		await expect(snowTracker.connect(userOne).spendTokens(userOne.address, tokenToSpend)).to.be.reverted;
+		await expect(snowTracker.connect(userOne).removeTokens(userOne.address, tokenToSpend)).to.be.reverted;
 	});
 
 	it("Should track the total amount of unique token holders", async function () {

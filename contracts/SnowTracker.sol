@@ -31,7 +31,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  * - Holder (No roles granted): wallet address that owns 0
  * or more "soft-tokens".
  * - Manager (granted MANAGER_ROLE): wallet that is able to manage
- * soft-token wallets balances by adding and removing arbitrary amounts.
+ * soft-token wallets balances by adding arbitrary amounts.
  * - Spender (granted SPENDER_ROLE): an address, that acts as a subject
  * who is able to spend tokes on behalf of a general Holder (the Spender
  * is a role that is intended to be granted to marketplace contracts).
@@ -206,7 +206,7 @@ contract SnowTracker is Pausable, AccessControl {
      */
     function removeTokens(address from, uint256 amount)
         public
-        onlyRole(MANAGER_ROLE)
+        onlyRole(SPENDER_ROLE)
         whenNotPaused
         returns (uint256)
     {
@@ -294,49 +294,5 @@ contract SnowTracker is Pausable, AccessControl {
         balances[to] = newReceiverBalance;
 
         emit TokensTransfered(_msgSender(), to, block.number, amount);
-    }
-
-    /**
-     * @dev remove tokens from a specified wallet address
-     * as a consequence of a specific external event.
-     * This function will be called from external contracts, so
-     * when called by a marketplace for instance this means that the
-     * an order has been fulfilled and paid through the {buyer} balance
-     *
-     * @param buyer wallet address from which remove the tokens
-     * @param amount number of tokens to remove
-     *
-     * @return the new updated balance
-     *
-     * Note: reverts if the transaction sender tries to remove from
-     * the {buyer} address more tokens than the current balance
-     */
-    function spendTokens(address buyer, uint256 amount)
-        public
-        onlyRole(SPENDER_ROLE)
-        whenNotPaused
-        returns (uint256)
-    {
-        require(amount > 0, "Can't spend zero tokens");
-        require(
-            balances[buyer] >= amount,
-            "Can't spend more than the current balance"
-        );
-
-        // Update total supply
-        totalSupply = totalSupply - amount;
-
-        // Update balance
-        uint256 newBalance = balances[buyer] - amount;
-        balances[buyer] = newBalance;
-
-        // Update total holders
-        if (balances[buyer] == 0) {
-            uniqueHolders--;
-        }
-
-        emit TokensSpent(buyer, amount, block.number);
-
-        return newBalance;
     }
 }

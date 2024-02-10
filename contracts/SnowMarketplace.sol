@@ -374,7 +374,7 @@ contract SnowMarketplace is AccessControl {
 
         if (tracker.balances(_msgSender()) >= order.price) {
             // Decrease balance (reduce reentrancy risks)
-            tracker.spendTokens(_msgSender(), order.price);
+            tracker.removeTokens(_msgSender(), order.price);
             // Transfer bought NFT
 
             _transferNfts(
