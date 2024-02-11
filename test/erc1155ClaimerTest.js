@@ -1,13 +1,13 @@
-const { expect, assert } = require("chai");
+const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { loadFixture, mine, time } = require("@nomicfoundation/hardhat-network-helpers");
 
 const anyValue = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 describe("Claim ERC1155 - Test", function () {
-	const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
 	const MANAGER_ROLE = "0x241ecf16d79d0f8dbfb92cbc07fe17840425976cf0667f022fe9877caa831b08";
 	const NFTS_OPERATOR_ROLE = "0x4c632552d0d56a86626e1e6c02a1d2ee49630de09eb2aee0e6a3daead58a6b2f";
+	const ZERO_ADDRESS = ethers.constants.AddressZero;
 
 	// Tokens to mint and amounts
 	const BACKPACK_ID = 0;
@@ -738,6 +738,12 @@ describe("Claim ERC1155 - Test", function () {
 		const { erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
 
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID);
+
+		// Reverts because the token address can't be the zero address
+		await expect(erc1155ClaimerInstance.createSimpleClaimEvent(ZERO_ADDRESS, BACKPACK_ID)).to.be.revertedWith(
+			"Token contract address can't be the zero address"
+		);
+
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID);
 		await erc1155ClaimerInstance.createSimpleClaimEvent(simpleErc1155Instante.address, BACKPACK_ID);
 
@@ -751,6 +757,7 @@ describe("Claim ERC1155 - Test", function () {
 		const { erc1155ClaimerInstance, simpleErc1155Instante } = await loadFixture(deployContractsFixture);
 
 		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [BACKPACK_ID]);
+
 		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [BACKPACK_ID]);
 		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [BACKPACK_ID]);
 
@@ -760,6 +767,11 @@ describe("Claim ERC1155 - Test", function () {
 		await erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, 0);
 		await expect(erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, 4)).to.be.revertedWith(
 			"Random Claim event not in the active list"
+		);
+
+		// Reverts because the token address can't be the zero address
+		await expect(erc1155ClaimerInstance.createRandomClaimEvent(ZERO_ADDRESS, [BACKPACK_ID])).to.be.revertedWith(
+			"Token contract address can't be the zero address"
 		);
 	});
 });

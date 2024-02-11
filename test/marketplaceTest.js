@@ -53,6 +53,19 @@ describe("Snow token tracker and marketplace - Test", function () {
 		};
 	}
 
+	it("Should not allow to deploy with zero address as contract parameter", async function () {
+		// Deploy the SnowTracker contract
+		const SnowTracker = await ethers.getContractFactory("SnowTracker");
+		const snowTracker = await SnowTracker.deploy();
+		await snowTracker.deployed();
+
+		// Reverts becasue can't use the zero address in the constructor
+		const Marketplace = await ethers.getContractFactory("SnowMarketplace");
+		await expect(Marketplace.deploy(ZERO_ADDRESS, MAX_ACTIVE_ORDERS_AMOUNT)).to.be.revertedWith(
+			"Snow contract address can't be the zero address"
+		);
+	});
+
 	it("Should allow a wallet with the PAUSER_ROLE role to pause and unpause the Snow Tracker", async function () {
 		const { deployer, userOne, snowTracker } = await loadFixture(deployContractsFixture);
 
@@ -76,6 +89,9 @@ describe("Snow token tracker and marketplace - Test", function () {
 		// Increases the number of unique holders by 1
 		await snowTracker.addTokens(userThree.address, 1);
 		await snowTracker.addTokens(userThree.address, 1);
+
+		// Reverts becasue cannot add tokens to the ZERO_ADDRESS
+		await expect(snowTracker.addTokens(ZERO_ADDRESS, 1)).to.be.revertedWith("Can't add tokens to the zero address");
 
 		expect(await snowTracker.balances(userOne.address)).to.be.equal(parseInt(initialBalance) + tokensToAdd);
 
@@ -212,9 +228,23 @@ describe("Snow token tracker and marketplace - Test", function () {
 		const initialUserOneBalance = (await snowTracker.balances(userOne.address)) + tokensToAdd;
 		const initialUserTwoBalance = await snowTracker.balances(userTwo.address);
 		await snowTracker.addTokens(userOne.address, tokensToAdd);
+
+		// Reverts becasue can't transfer 0 tokens
+		await expect(snowTracker.connect(userOne).transferTokens(userTwo.address, 0)).to.be.revertedWith(
+			"Can't transfer 0 tokens"
+		);
+
 		await snowTracker.connect(userOne).transferTokens(userTwo.address, tokensToTransfer);
+
 		expect(await snowTracker.balances(userOne.address)).to.be.equal(parseInt(initialUserOneBalance) - tokensToTransfer);
 		expect(await snowTracker.balances(userTwo.address)).to.be.equal(parseInt(initialUserTwoBalance) + tokensToTransfer);
+
+		await snowTracker.connect(userOne).transferTokens(userTwo.address, tokensToTransfer);
+		await expect(snowTracker.connect(userOne).transferTokens(ZERO_ADDRESS, tokensToTransfer)).to.be.revertedWith(
+			"Can't transfer tokens to the zero address"
+		);
+
+		await snowTracker.connect(userOne).transferTokens(userTwo.address, tokensToAdd - tokensToTransfer * 2);
 
 		// Reverts because the contract is paused
 		await snowTracker.grantRole(PAUSER_ROLE, deployer.address);

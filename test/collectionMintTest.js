@@ -5,7 +5,6 @@ const { loadFixture, mine, time } = require("@nomicfoundation/hardhat-network-he
 const anyValue = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 
 describe("Collection mint testing", function () {
-	const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
 	const MANAGER_ROLE = "0x241ecf16d79d0f8dbfb92cbc07fe17840425976cf0667f022fe9877caa831b08";
 	const PAUSER_ROLE = "0x65d7a28e3265b37a6474929f336521b332c1681b933f6cb9f3376673440d862a";
 	const MINTER_ROLE = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6";
@@ -78,6 +77,21 @@ describe("Collection mint testing", function () {
 			erc20,
 		};
 	}
+
+	it("Should not allow to deploy with zero address as contract parameter", async function () {
+		const [contractProvider] = await ethers.getSigners();
+
+		// Deploy the Erc721collection contract
+		const Erc721Collection = await ethers.getContractFactory("Erc721Collection");
+		const erc721Collection = await Erc721Collection.deploy(1, MAX_COLLECTION_SUPPLY, 250, "my_custom_URI");
+		await erc721Collection.deployed();
+
+		// Reverts becasue can't use the zero address in the constructor
+		const CollectionMinter = await ethers.getContractFactory("CollectionMinter");
+		await expect(CollectionMinter.deploy(ZERO_ADDRESS, 50, contractProvider.address)).to.be.revertedWith(
+			"Collection contract address can't be the zero address"
+		);
+	});
 
 	// Erc20 mint test
 	it("Should allow to mint Erc20 tokens", async function () {
@@ -359,6 +373,11 @@ describe("Collection mint testing", function () {
 		//await collectionMinter.grantRole(PAUSER_ROLE, deployer.address);
 		await collectionMinter.grantRole(MANAGER_ROLE, deployer.address);
 
+		// Reverts because the payment token address is the zero address
+		await expect(collectionMinter.createSalePhase(false, 0, 100, false, ZERO_ADDRESS, 100, 1, 100)).to.be.revertedWith(
+			"The zero address is an invalid payment token address"
+		);
+
 		// Grant whitelist to userOne
 		await expect(collectionMinter.createSalePhase(false, 0, 100, true, ZERO_ADDRESS, 100, 1, 100)).to.not.be.reverted;
 	});
@@ -424,6 +443,12 @@ describe("Collection mint testing", function () {
 		const { userOne, collectionMinter } = await loadFixture(deployContractsFixture);
 
 		await expect(collectionMinter.updateFundsReceiver(userOne.address)).to.not.be.reverted;
+
+		// Reverts because the funds receiver can't be the zero address
+		await expect(collectionMinter.updateFundsReceiver(ZERO_ADDRESS)).to.be.revertedWith(
+			"Funds receiver can't be the zero address"
+		);
+
 		await expect(collectionMinter.connect(userOne).updateFundsReceiver(userOne.address)).to.be.reverted;
 	});
 

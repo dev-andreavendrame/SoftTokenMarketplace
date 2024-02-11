@@ -203,6 +203,11 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         uint256 _providerMintFee,
         address _contractProvider
     ) {
+        require(
+            _collectionContract != address(0),
+            "Collection contract address can't be the zero address"
+        );
+
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
         // Setup variables for interacting with the avatars collection
@@ -320,6 +325,13 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         // Get and increment sale phase ID for the next sale
         uint256 phaseId = _currentSalePhaseId;
         _currentSalePhaseId = _currentSalePhaseId + 1;
+
+        if (!payInNativeCurrency) {
+            require(
+                paymentToken != address(0),
+                "The zero address is an invalid payment token address"
+            );
+        }
 
         SalePhase memory salePhase = SalePhase(
             phaseId,
@@ -447,6 +459,10 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        require(
+            _newFundsReceiver != address(0),
+            "Funds receiver can't be the zero address"
+        );
         fundsReceiver = _newFundsReceiver;
         emit FundsReceiverUpdated(
             _msgSender(),

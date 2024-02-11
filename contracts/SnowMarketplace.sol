@@ -154,6 +154,11 @@ contract SnowMarketplace is AccessControl {
      * keeps track of the soft-token balances
      */
     constructor(address snowTokenContract, uint256 _maxActiveOrdesAmount) {
+        require(
+            snowTokenContract != address(0),
+            "Snow contract address can't be the zero address"
+        );
+
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());

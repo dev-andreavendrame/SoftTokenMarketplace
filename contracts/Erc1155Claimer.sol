@@ -420,6 +420,11 @@ contract Erc1155Claimer is
             "Can't create a new claim. Max amount of concurrent active Simple claim events reached!"
         );
 
+        require(
+            contractAddress != address(0),
+            "Token contract address can't be the zero address"
+        );
+
         uint256 currentEventId = _simpleClaimCounter++;
 
         SimpleClaimEvent memory newClaimEvent = SimpleClaimEvent(
@@ -459,6 +464,11 @@ contract Erc1155Claimer is
         require(
             _randomClaimEventsActive.length < maxActiveClaimEventsPerType,
             "Can't create a new claim. Max amount of concurrent active Random claim events reached!"
+        );
+
+        require(
+            contractAddress != address(0),
+            "Token contract address can't be the zero address"
         );
 
         uint256 currentEventId = _randomClaimCounter++;

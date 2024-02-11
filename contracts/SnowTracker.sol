@@ -141,6 +141,7 @@ contract SnowTracker is Pausable, AccessControl {
         returns (uint256)
     {
         require(amount > 0, "Can't add zero tokens");
+        require(to != address(0), "Can't add tokens to the zero address");
 
         // Update total holders
         if (balances[to] == 0) {
@@ -285,6 +286,14 @@ contract SnowTracker is Pausable, AccessControl {
             "Can't transfer more tokens than the available balance"
         );
 
+        require(amount > 0, "Can't transfer 0 tokens");
+        require(to != address(0), "Can't transfer tokens to the zero address");
+
+        // Check if is needed to increase the unique holders amount (receiver side)
+        if (balances[to] == 0) {
+            uniqueHolders = uniqueHolders + 1;
+        }
+
         // Remove tokens from sender
         uint256 newSenderBalance = balances[_msgSender()] - amount;
         balances[_msgSender()] = newSenderBalance;
@@ -292,6 +301,11 @@ contract SnowTracker is Pausable, AccessControl {
         // Add tokens to receiver
         uint256 newReceiverBalance = balances[to] + amount;
         balances[to] = newReceiverBalance;
+
+        // Check if is needed to decrease the unique holders amount (sender side)
+        if (newSenderBalance == 0) {
+            uniqueHolders = uniqueHolders - 1;
+        }
 
         emit TokensTransfered(_msgSender(), to, block.number, amount);
     }
