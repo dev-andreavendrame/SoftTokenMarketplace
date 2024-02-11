@@ -56,7 +56,6 @@ contract SnowMarketplace is AccessControl {
     //------------------------------------------------------------------//
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MANAGER_ROLE = keccak256("MANAGER_ROLE");
-    bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
     bytes32 public constant ORDERS_MANAGER_ROLE =
         keccak256("ORDERS_MANAGER_ROLE");
     uint256 public constant INVALID_BLOCK = 0;
@@ -163,7 +162,7 @@ contract SnowMarketplace is AccessControl {
         _grantRole(MANAGER_ROLE, _msgSender());
         _grantRole(PAUSER_ROLE, _msgSender());
 
-        snowSoftTokenAddress = snowTokenContract; // Assumed to be valid
+        snowSoftTokenAddress = snowTokenContract;
 
         isMarketplaceActive = true; // enable marketplace usage from the beginning
 
@@ -178,7 +177,7 @@ contract SnowMarketplace is AccessControl {
      * @dev enable the marketplace by letting available the functions
      * to create and fullfil MarketOrders
      */
-    function pauseMarketplace() external onlyRole(MANAGER_ROLE) {
+    function pauseMarketplace() external onlyRole(PAUSER_ROLE) {
         isMarketplaceActive = false;
         emit MarketplacePaused(_msgSender(), block.number);
     }
@@ -187,7 +186,7 @@ contract SnowMarketplace is AccessControl {
      * @dev disable the marketplace by preventing the user to
      * create and fullfil MarketOrders
      */
-    function unpauseMarketplace() external onlyRole(MANAGER_ROLE) {
+    function unpauseMarketplace() external onlyRole(PAUSER_ROLE) {
         isMarketplaceActive = true;
         emit MarketplaceUnpaused(_msgSender(), block.number);
     }
