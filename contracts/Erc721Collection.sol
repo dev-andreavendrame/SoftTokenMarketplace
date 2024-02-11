@@ -73,15 +73,15 @@ contract Erc721Collection is
     uint256 private _nextTokenId;
 
     // Collection supply constraints
-    uint256 public minimumNftTokenId;
-    uint256 public maximumNftTokenId;
+    uint256 public immutable minimumNftTokenId;
+    uint256 public immutable maximumNftTokenId;
 
     // Collection initial URI
     string public partialMetadataUri;
 
     // Royalties information
-    address public royaltiesReceiver;
-    uint96 public contractRoyaltiesBps;
+    address public immutable royaltiesReceiver;
+    uint96 public immutable contractRoyaltiesBps;
 
     //------------------------------------------------------------------//
     //-------------------- Constructor ---------------------------------//

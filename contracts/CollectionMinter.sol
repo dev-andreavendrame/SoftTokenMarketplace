@@ -68,7 +68,7 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
     bytes32 public constant TEAM_MINTER_ROLE = keccak256("TEAM_MINTER_ROLE");
 
     // Contract to call for minting tokens
-    address public collectionContract;
+    address public immutable collectionContract;
     Erc721Collection private originalCollectionInstance;
 
     // Sale phases data and constants
@@ -82,9 +82,8 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
     address public fundsReceiver;
 
     // Provider mint fee information
-    address payable private contractProvider =
-        payable(0x12CC4845C5846260bdD46D17f58eEd26C6573EE1);
-    uint256 private providerMintFee;
+    address payable private immutable contractProvider;
+    uint256 private immutable providerMintFee;
 
     struct SalePhase {
         uint256 phaseId; // Starts from 0
