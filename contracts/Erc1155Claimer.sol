@@ -863,14 +863,12 @@ contract Erc1155Claimer is
     {
         // Calculate an average-like value to use in the next distribution steps
         uint256 fakeAverage;
-        uint256[] memory nftsToClaim = currentDistribution;
-        uint256[] memory currentAvailableAmounts = availableAmounts;
         uint256 nftsLeft = amountToClaim;
 
         uint256 initialAvailableAmount;
         uint256 initialDistributedAmount;
 
-        for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
+        for (uint256 i = 0; i < availableAmounts.length; i++) {
             initialAvailableAmount =
                 initialAvailableAmount +
                 availableAmounts[i];
@@ -878,43 +876,45 @@ contract Erc1155Claimer is
                 initialDistributedAmount +
                 currentDistribution[i];
 
-            fakeAverage = fakeAverage + currentAvailableAmounts[i];
+            fakeAverage = fakeAverage + availableAmounts[i];
         }
 
-        fakeAverage = fakeAverage / currentAvailableAmounts.length + 1;
+        fakeAverage = fakeAverage / availableAmounts.length + 1;
 
         uint256 finalDistributedAmount;
 
-        for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
+        for (uint256 i = 0; i < availableAmounts.length; i++) {
             if (nftsLeft >= fakeAverage) {
-                if (fakeAverage >= currentAvailableAmounts[i]) {
-                    nftsToClaim[i] =
-                        nftsToClaim[i] +
-                        currentAvailableAmounts[i];
-                    nftsLeft = nftsLeft - currentAvailableAmounts[i];
-                    currentAvailableAmounts[i] = 0;
+                if (fakeAverage >= availableAmounts[i]) {
+                    currentDistribution[i] =
+                        currentDistribution[i] +
+                        availableAmounts[i];
+                    nftsLeft = nftsLeft - availableAmounts[i];
+                    availableAmounts[i] = 0;
                 } else {
-                    nftsToClaim[i] = nftsToClaim[i] + fakeAverage;
-                    currentAvailableAmounts[i] =
-                        currentAvailableAmounts[i] -
+                    currentDistribution[i] =
+                        currentDistribution[i] +
                         fakeAverage;
+                    availableAmounts[i] = availableAmounts[i] - fakeAverage;
                     nftsLeft = nftsLeft - fakeAverage;
                 }
             } else {
-                if (nftsLeft >= currentAvailableAmounts[i]) {
-                    nftsToClaim[i] =
-                        nftsToClaim[i] +
-                        currentAvailableAmounts[i];
-                    nftsLeft = nftsLeft - currentAvailableAmounts[i];
-                    currentAvailableAmounts[i] = 0;
+                if (nftsLeft >= availableAmounts[i]) {
+                    currentDistribution[i] =
+                        currentDistribution[i] +
+                        availableAmounts[i];
+                    nftsLeft = nftsLeft - availableAmounts[i];
+                    availableAmounts[i] = 0;
                 } else {
-                    nftsToClaim[i] = nftsToClaim[i] + nftsLeft;
+                    currentDistribution[i] = currentDistribution[i] + nftsLeft;
                     nftsLeft = 0;
-                    return (nftsToClaim, nftsLeft, currentAvailableAmounts);
+                    return (currentDistribution, nftsLeft, availableAmounts);
                 }
             }
 
-            finalDistributedAmount = finalDistributedAmount + nftsToClaim[i];
+            finalDistributedAmount =
+                finalDistributedAmount +
+                currentDistribution[i];
         }
 
         require(
@@ -923,7 +923,7 @@ contract Erc1155Claimer is
             "Wrong distribution"
         );
 
-        return (nftsToClaim, nftsLeft, currentAvailableAmounts);
+        return (currentDistribution, nftsLeft, availableAmounts);
     }
 
     /**
@@ -952,27 +952,27 @@ contract Erc1155Claimer is
         uint256 amountToClaim,
         uint256[] memory currentAvailableAmounts
     ) private pure returns (uint256[] memory) {
-        uint256[] memory nftsToClaim = currentDistribution;
-        uint256[] memory remainingAvailableNfts = currentAvailableAmounts;
         uint256 nftsLeft = amountToClaim;
         // Final step (distribution of the remaining NFTs)
         if (nftsLeft > 0) {
-            for (uint256 i = 0; i < remainingAvailableNfts.length; i++) {
-                if (remainingAvailableNfts[i] >= nftsLeft) {
-                    nftsToClaim[i] = nftsToClaim[i] + nftsLeft;
-                    remainingAvailableNfts[i] =
-                        remainingAvailableNfts[i] -
+            for (uint256 i = 0; i < currentAvailableAmounts.length; i++) {
+                if (currentAvailableAmounts[i] >= nftsLeft) {
+                    currentDistribution[i] = currentDistribution[i] + nftsLeft;
+                    currentAvailableAmounts[i] =
+                        currentAvailableAmounts[i] -
                         nftsLeft;
-                    return (nftsToClaim);
+                    return (currentDistribution);
                 } else {
-                    nftsToClaim[i] = nftsToClaim[i] + remainingAvailableNfts[i];
-                    nftsLeft = nftsLeft - remainingAvailableNfts[i];
-                    remainingAvailableNfts[i] = 0;
+                    currentDistribution[i] =
+                        currentDistribution[i] +
+                        currentAvailableAmounts[i];
+                    nftsLeft = nftsLeft - currentAvailableAmounts[i];
+                    currentAvailableAmounts[i] = 0;
                 }
             }
-            return (nftsToClaim);
+            return (currentDistribution);
         } else {
-            return (nftsToClaim);
+            return (currentDistribution);
         }
     }
 
