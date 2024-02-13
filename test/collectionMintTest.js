@@ -57,6 +57,11 @@ describe("Collection mint testing", function () {
 
 		// Deploy the CollectionMinter contract
 		const CollectionMinter = await ethers.getContractFactory("CollectionMinter");
+
+		await expect(CollectionMinter.deploy(erc721Collection.address, 50, ZERO_ADDRESS)).to.be.revertedWith(
+			"Contract provider can't be the zero address"
+		);
+
 		const collectionMinter = await CollectionMinter.deploy(erc721Collection.address, 50, contractProvider.address);
 		await collectionMinter.deployed();
 
@@ -91,6 +96,25 @@ describe("Collection mint testing", function () {
 		await expect(CollectionMinter.deploy(ZERO_ADDRESS, 50, contractProvider.address)).to.be.revertedWith(
 			"Collection contract address can't be the zero address"
 		);
+	});
+
+	it("Should allow to pay 0 fees for contract provider", async function () {
+		const [contractProvider] = await ethers.getSigners();
+
+		// Deploy the Erc721collection contract
+		const Erc721Collection = await ethers.getContractFactory("Erc721Collection");
+		const erc721Collection = await Erc721Collection.deploy(1, MAX_COLLECTION_SUPPLY, 250, "my_custom_URI");
+		await erc721Collection.deployed();
+
+		// Deploy the CollectionMinter contract
+		const CollectionMinter = await ethers.getContractFactory("CollectionMinter");
+		const collectionMinter = await CollectionMinter.deploy(erc721Collection.address, 0, contractProvider.address);
+		await collectionMinter.deployed();
+
+		await erc721Collection.grantRole(MINTER_ROLE, collectionMinter.address);
+
+		await collectionMinter.grantRole(TEAM_MINTER_ROLE, contractProvider.address);
+		await collectionMinter.connect(contractProvider).teamMint(1);
 	});
 
 	// Erc20 mint test
@@ -183,7 +207,6 @@ describe("Collection mint testing", function () {
 		const supportsAccessControl = await erc721Collection.supportsInterface("0x7965db0b");
 		const supportsERC721URIStorage = await erc721Collection.supportsInterface("0x49064906");
 		const supportsERC721 = await erc721Collection.supportsInterface("0x80ac58cd");
-		const arbitraryInterfaceId = ethers.utils.id("0x00000000");
 
 		await expect(erc721Collection.supportsInterface("0x00000000")).to.not.be.reverted;
 		await erc721Collection.supportsInterface("0xffffffff");

@@ -207,6 +207,11 @@ contract CollectionMinter is Pausable, AccessControl, ReentrancyGuard {
             "Collection contract address can't be the zero address"
         );
 
+        require(
+            _contractProvider != address(0),
+            "Contract provider can't be the zero address"
+        );
+
         _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _grantRole(MANAGER_ROLE, _msgSender());
         // Setup variables for interacting with the avatars collection

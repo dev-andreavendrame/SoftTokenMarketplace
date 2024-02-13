@@ -251,7 +251,7 @@ contract SnowTracker is Pausable, AccessControl {
      */
     function batchRemoveTokens(address[] memory from, uint256[] memory amounts)
         public
-        onlyRole(MANAGER_ROLE)
+        onlyRole(SPENDER_ROLE)
         whenNotPaused
         returns (uint256)
     {

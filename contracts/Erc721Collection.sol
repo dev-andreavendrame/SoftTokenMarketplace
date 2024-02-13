@@ -19,6 +19,9 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Pausable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 /*
  * This contract represents a traditional ERC721 collection with few custom features.
@@ -212,10 +215,9 @@ contract Erc721Collection is
         returns (bool)
     {
         return
-            interfaceId == _INTERFACE_ID_ERC2981 ||
-            interfaceId == _INTERFACE_ID_ACCESS_CONTROL ||
-            interfaceId == _INTERFACE_ID_ERC721_URI_STORAGE ||
-            interfaceId == _INTERFACE_ID_ERC721 ||
+            interfaceId == type(IAccessControl).interfaceId ||
+            interfaceId == type(IERC721).interfaceId ||
+            interfaceId == type(IERC2981).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 
