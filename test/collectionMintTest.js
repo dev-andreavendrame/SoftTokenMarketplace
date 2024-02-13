@@ -651,6 +651,35 @@ describe("Collection mint testing", function () {
 		);
 		await erc20.approve(collectionMinter.address, MINT_PRICE * 4);
 		await expect(collectionMinter.mintTokens(1, 4, { value: 50 })).to.not.be.reverted;
+
+		// Withdraw ERC20 tokens
+		await collectionMinter.withdrawFunds(false, erc20.address);
+
+		// Withdraw native currency tokens
+		const NATIVE_CURRENCY_PRICE = 10;
+		await expect(collectionMinter.withdrawFunds(true, ZERO_ADDRESS)).to.be.revertedWith("Cannot withdraw 0 tokens");
+		await collectionMinter.createSalePhase(
+			false,
+			1,
+			1000,
+			true,
+			ZERO_ADDRESS,
+			NATIVE_CURRENCY_PRICE,
+			UNLIMITED_MINTABLE_TOKENS,
+			100
+		);
+		await collectionMinter.mintTokens(1, 5, { value: 50 + NATIVE_CURRENCY_PRICE });
+		await expect(collectionMinter.withdrawFunds(true, ZERO_ADDRESS)).to.not.be.reverted;
+
+		// Deploy the and simulate the attack to the minter contract
+		const Attack = await ethers.getContractFactory("Attack2");
+		const attack = await Attack.deploy(collectionMinter.address);
+		await attack.deployed();
+
+		await collectionMinter.updateFundsReceiver(attack.address);
+		await collectionMinter.mintTokens(1, 5, { value: 50 + NATIVE_CURRENCY_PRICE });
+
+		await expect(collectionMinter.withdrawFunds(true, ZERO_ADDRESS)).to.be.reverted;
 	});
 
 	it("Should allow to pay the mint with ERC20 tokens", async function () {
