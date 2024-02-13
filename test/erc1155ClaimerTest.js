@@ -762,7 +762,6 @@ describe("Claim ERC1155 - Test", function () {
 		await erc1155ClaimerInstance.createRandomClaimEvent(simpleErc1155Instante.address, [BACKPACK_ID]);
 
 		const simpleClaimEventsActive = await erc1155ClaimerInstance.getRandomClaimEventsActive();
-		console.log(simpleClaimEventsActive);
 
 		await erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, 0);
 		await expect(erc1155ClaimerInstance.disableClaimEvent(RANDOM_CLAIM_EVENT_TYPE, 4)).to.be.revertedWith(

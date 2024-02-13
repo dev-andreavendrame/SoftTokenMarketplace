@@ -161,7 +161,6 @@ describe("Collection mint testing", function () {
 		await erc721Collection.grantRole(MINTER_ROLE, deployer.address);
 		await erc721Collection.getCurrentSupply();
 		await expect(erc721Collection.safeMint(deployer.address)).to.not.be.reverted;
-		console.log(await erc721Collection.getCurrentSupply());
 		await expect(erc721Collection.safeMint(deployer.address)).to.be.revertedWith(
 			"Max supply reached. Can't mint more tokens"
 		);
@@ -173,7 +172,6 @@ describe("Collection mint testing", function () {
 		await erc721Collection.grantRole(MINTER_ROLE, deployer.address);
 		await expect(erc721Collection.safeMint(deployer.address)).to.not.be.reverted;
 		const tokenURI = await erc721Collection.tokenURI(1);
-		console.log(tokenURI);
 	});
 
 	it("Should allow to check the token URI of an existing token", async function () {
