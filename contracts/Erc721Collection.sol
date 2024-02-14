@@ -21,7 +21,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 /*
  * This contract represents a traditional ERC721 collection with few custom features.
@@ -65,12 +64,6 @@ contract Erc721Collection is
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant URI_EDITOR_ROLE = keccak256("URI_EDITOR_ROLE");
-
-    // Interface to support
-    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
-    bytes4 private constant _INTERFACE_ID_ACCESS_CONTROL = 0x7965db0b;
-    bytes4 private constant _INTERFACE_ID_ERC721_URI_STORAGE = 0x49064906;
-    bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
 
     // NFT token ID counter
     uint256 private _nextTokenId;
@@ -215,7 +208,6 @@ contract Erc721Collection is
         returns (bool)
     {
         return
-            interfaceId == type(IAccessControl).interfaceId ||
             interfaceId == type(IERC721).interfaceId ||
             interfaceId == type(IERC2981).interfaceId ||
             super.supportsInterface(interfaceId);
